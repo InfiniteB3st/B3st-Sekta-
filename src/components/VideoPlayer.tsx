@@ -26,7 +26,7 @@ interface VideoPlayerProps {
  * Features: Addon Resolution, Range Logic, and Real-Time DB Sync.
  */
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
-  animeId, animeTitle, imageUrl, episode, userId, onEpisodeChange, onBack 
+  animeId, animeTitle, imageUrl, currentEpisode, userId, onEpisodeChange, onBack 
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); 
@@ -62,14 +62,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // 3. Resolve Active Node to Stream Endpoint
   useEffect(() => {
     if (activeAddon) {
-      AddonResolver.resolveStream(activeAddon, animeId, episode).then(url => {
+      AddonResolver.resolveStream(activeAddon, animeId, currentEpisode).then(url => {
         setStreamUrl(url);
         setCurrentTime(0);
         setProgress(0);
         setShowNextOverlay(false);
       });
     }
-  }, [activeAddon, animeId, episode]);
+  }, [activeAddon, animeId, currentEpisode]);
 
   // 4. Playback Logic & Progress Persistence
   useEffect(() => {
@@ -93,7 +93,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               user_id: userId,
               anime_id: animeId,
               anime_title: animeTitle,
-              episode_id: episode,
+              episode_id: currentEpisode,
               progress_ms: next * 1000,
               image_url: imageUrl,
               status: 'Watching'
@@ -106,7 +106,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isPlaying, duration, showNextOverlay, userId, animeId, episode, animeTitle, imageUrl]);
+  }, [isPlaying, duration, showNextOverlay, userId, animeId, currentEpisode, animeTitle, imageUrl]);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
   const formatTime = (s: number) => {
@@ -117,109 +117,115 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div className={cn(
-      "w-full bg-black transition-all duration-700 animate-in fade-in",
-      isTheater ? "fixed inset-0 z-[100] h-full" : "rounded-[4rem] aspect-video relative overflow-hidden shadow-3xl border border-white/5"
+      "w-full bg-black min-h-screen",
+      isTheater ? "fixed inset-0 z-[100]" : "space-y-20 p-6 md:p-12 lg:p-20"
     )}>
       
-      {/* NATIVE PLAYER MASK */}
-      <div className="absolute inset-0 flex items-center justify-center p-20 cursor-pointer bg-surface" onClick={togglePlay}>
-         <AnimatePresence>
-           {!isPlaying && (
-             <motion.div 
-               initial={{ scale: 0.8, opacity: 0 }}
-               animate={{ scale: 1, opacity: 1 }}
-               exit={{ scale: 1.2, opacity: 0 }}
-               className="w-28 h-28 bg-primary text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(var(--primary-rgb),0.5)] z-20"
-             >
-               <Play fill="currentColor" size={48} className="ml-2" />
-             </motion.div>
-           )}
-         </AnimatePresence>
-         
-         <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 opacity-[0.03] select-none">
-            <Monitor size={120} />
-            <h4 className="text-xl font-black uppercase tracking-[0.5em] italic">Active Addon Stream</h4>
-         </div>
-      </div>
-
-      {/* HI-ANIME CONTROL INTERFACE */}
-      <div className="absolute inset-x-0 bottom-0 p-10 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col gap-6 group">
-        
-        <div className="relative h-2 w-full bg-white/10 rounded-full cursor-pointer overflow-hidden group/bar">
-            <div className="h-full bg-primary shadow-[0_0_20px_var(--primary)]" style={{ width: `${progress}%` }} />
-            <div className="absolute right-0 top-0 h-full w-4 bg-white/40 blur-md translate-x-full group-hover/bar:translate-x-0 transition-transform" />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-12 text-white">
-             <button onClick={togglePlay} className="hover:text-primary transition-all active:scale-90">
-               {isPlaying ? <Pause fill="currentColor" size={32} /> : <Play fill="currentColor" size={32} />}
-             </button>
-             <button onClick={() => onEpisodeChange(episode + 1)} className="hover:text-primary transition-all">
-               <SkipForward size={28} />
-             </button>
-             <div className="text-[14px] font-black italic tracking-tighter flex items-center gap-4">
-                <span className="text-white">{formatTime(currentTime)}</span>
-                <span className="text-gray-700">/</span>
-                <span className="text-gray-500">{formatTime(duration)}</span>
-             </div>
-             <div className="flex items-center gap-4 group/vol">
-                <Volume2 size={24} className="text-gray-500 group-hover/vol:text-primary transition-colors" />
-                <div className="w-0 group-hover/vol:w-24 h-1 bg-white/10 rounded-full transition-all overflow-hidden">
-                   <div className="h-full bg-primary" style={{ width: `${volume * 100}%` }} />
-                </div>
-             </div>
-          </div>
-
-          <div className="flex items-center gap-10">
-             <button onClick={() => setIsTheater(!isTheater)} className={cn("transition-all", isTheater ? "text-primary" : "text-white hover:text-primary")}>
-               <Layout size={28} />
-             </button>
-             <div className="bg-white/5 h-8 w-px mx-4" />
-             <button className="text-white hover:text-primary transition-all hover:rotate-90">
-               <Settings size={28} />
-             </button>
-             <button className="text-white hover:text-primary transition-all">
-               <Maximize size={28} />
-             </button>
+      <div className={cn(
+        "bg-black transition-all duration-700 relative overflow-hidden",
+        isTheater ? "w-full h-full" : "rounded-[4rem] aspect-video shadow-3xl border border-white/5 mx-auto max-w-7xl"
+      )}>
+        {/* NATIVE PLAYER MASK */}
+        <div className="absolute inset-0 flex items-center justify-center p-20 cursor-pointer bg-surface" onClick={togglePlay}>
+          <AnimatePresence>
+            {!isPlaying && (
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.2, opacity: 0 }}
+                className="w-28 h-28 bg-primary text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(var(--primary-rgb),0.5)] z-20"
+              >
+                <Play fill="currentColor" size={48} className="ml-2" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 opacity-[0.03] select-none">
+              <Monitor size={120} />
+              <h4 className="text-xl font-black uppercase tracking-[0.5em] italic">Active Addon Stream</h4>
           </div>
         </div>
-      </div>
 
-      {/* HI-ANIME TOP HEADER */}
-      <div className="absolute top-0 inset-x-0 p-10 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none">
-         <div className="flex items-center gap-8 pointer-events-auto">
-            <button onClick={onBack} className="w-14 h-14 bg-white/5 backdrop-blur-xl rounded-3xl flex items-center justify-center text-white border border-white/10 hover:border-primary transition-all group">
-              <ChevronLeft size={28} className="group-hover:-translate-x-1 transition-transform" />
-            </button>
-            <div className="space-y-1">
-               <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white drop-shadow-2xl">{animeTitle}</h3>
-               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest italic">Now Broadcasting: Episode {episode}</p>
+        {/* HI-ANIME CONTROL INTERFACE */}
+        <div className="absolute inset-x-0 bottom-0 p-10 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col gap-6 group">
+          
+          <div className="relative h-2 w-full bg-white/10 rounded-full cursor-pointer overflow-hidden group/bar">
+              <div className="h-full bg-primary shadow-[0_0_20px_var(--primary)]" style={{ width: `${progress}%` }} />
+              <div className="absolute right-0 top-0 h-full w-4 bg-white/40 blur-md translate-x-full group-hover/bar:translate-x-0 transition-transform" />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-12 text-white">
+              <button onClick={togglePlay} className="hover:text-primary transition-all active:scale-90">
+                {isPlaying ? <Pause fill="currentColor" size={32} /> : <Play fill="currentColor" size={32} />}
+              </button>
+              <button onClick={() => onEpisodeChange(currentEpisode + 1)} className="hover:text-primary transition-all">
+                <SkipForward size={28} />
+              </button>
+              <div className="text-[14px] font-black italic tracking-tighter flex items-center gap-4">
+                  <span className="text-white">{formatTime(currentTime)}</span>
+                  <span className="text-gray-700">/</span>
+                  <span className="text-gray-500">{formatTime(duration)}</span>
+              </div>
+              <div className="flex items-center gap-4 group/vol">
+                  <Volume2 size={24} className="text-gray-500 group-hover/vol:text-primary transition-colors" />
+                  <div className="w-0 group-hover/vol:w-24 h-1 bg-white/10 rounded-full transition-all overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${volume * 100}%` }} />
+                  </div>
+              </div>
             </div>
-         </div>
+
+            <div className="flex items-center gap-10">
+              <button onClick={() => setIsTheater(!isTheater)} className={cn("transition-all", isTheater ? "text-primary" : "text-white hover:text-primary")}>
+                <Layout size={28} />
+              </button>
+              <div className="bg-white/5 h-8 w-px mx-4" />
+              <button className="text-white hover:text-primary transition-all hover:rotate-90">
+                <Settings size={28} />
+              </button>
+              <button className="text-white hover:text-primary transition-all">
+                <Maximize size={28} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* HI-ANIME TOP HEADER */}
+        <div className="absolute top-0 inset-x-0 p-10 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none">
+          <div className="flex items-center gap-8 pointer-events-auto">
+              <button onClick={onBack} className="w-14 h-14 bg-white/5 backdrop-blur-xl rounded-3xl flex items-center justify-center text-white border border-white/10 hover:border-primary transition-all group">
+                <ChevronLeft size={28} className="group-hover:-translate-x-1 transition-transform" />
+              </button>
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white drop-shadow-2xl">{animeTitle}</h3>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest italic">Now Broadcasting: Episode {currentEpisode}</p>
+              </div>
+          </div>
+        </div>
+
+        {/* AUTO-PROPAGATE OVERLAY */}
+        <AnimatePresence>
+          {showNextOverlay && (
+            <motion.div 
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 50, scale: 0.9 }}
+              className="absolute bottom-40 right-12 z-50 pointer-events-auto"
+            >
+              <button 
+                onClick={() => onEpisodeChange(currentEpisode + 1)}
+                className="bg-primary text-black px-12 py-7 rounded-[2.5rem] font-black uppercase tracking-[0.3em] flex items-center gap-5 hover:scale-110 active:scale-95 transition-all shadow-[0_25px_80px_rgba(var(--primary-rgb),0.5)] border-4 border-black"
+              >
+                <span className="text-xs">Propagate Next</span>
+                <ChevronRight size={28} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* AUTO-PROPAGATE OVERLAY */}
-      <AnimatePresence>
-        {showNextOverlay && (
-          <motion.div 
-            initial={{ opacity: 0, x: 50, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 50, scale: 0.9 }}
-            className="absolute bottom-40 right-12 z-50 pointer-events-auto"
-          >
-            <button 
-              onClick={() => onEpisodeChange(episode + 1)}
-              className="bg-primary text-black px-12 py-7 rounded-[2.5rem] font-black uppercase tracking-[0.3em] flex items-center gap-5 hover:scale-110 active:scale-95 transition-all shadow-[0_25px_80px_rgba(var(--primary-rgb),0.5)] border-4 border-black"
-            >
-              <span className="text-xs">Propagate Next</span>
-              <ChevronRight size={28} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="absolute inset-x-0 -bottom-[500px]">
+      <div className="max-w-7xl mx-auto w-full space-y-20">
+         {/* ADDON SELECTOR */}
          <section className="bg-[#111] p-12 rounded-[4rem] border border-white/5 space-y-8 animate-in fade-in duration-1000">
             <div className="flex items-center justify-between mb-10">
                <div className="flex items-center gap-6">
@@ -254,6 +260,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                ))}
             </div>
          </section>
+
+         {/* EPISODE NODES */}
+         <EpisodeList 
+           episodes={episodes} 
+           currentEpisode={currentEpisode} 
+           onEpisodeSelect={onEpisodeChange} 
+         />
       </div>
 
     </div>

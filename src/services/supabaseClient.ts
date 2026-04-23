@@ -5,12 +5,8 @@ import { createClient } from '@supabase/supabase-js';
  * Explicitly engineered to prevent OAuth Channel Blockage and "No API Key" Race Conditions.
  */
 
-const getEnv = (key: string) => {
-  return process.env[key] || import.meta.env[key] || '';
-};
-
-const supabaseUrl = getEnv('REACT_APP_SUPABASE_URL') || getEnv('VITE_SUPABASE_URL');
-const supabaseKey = getEnv('REACT_APP_SUPABASE_ANON_KEY') || getEnv('VITE_SUPABASE_ANON_KEY');
+const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
 // Singleton Instance Holder
 let instance: ReturnType<typeof createClient> | null = null;
@@ -19,34 +15,27 @@ let instance: ReturnType<typeof createClient> | null = null;
  * Get the hardened Supabase Client instance.
  * Ensures the handshake is always performed with forced headers.
  */
-export const getSupabase = () => {
+export const getSupabase = (): any => {
   if (!instance) {
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn("SYSTEM HANDSHAKE FAILURE: Keys not found in environment.");
-    }
-    
-    instance = createClient(
-      supabaseUrl || 'https://placeholder.supabase.co', 
-      supabaseKey || 'placeholder',
-      {
-        global: {
-          headers: { 
-            'apikey': supabaseKey || 'placeholder',
-            'Authorization': `Bearer ${supabaseKey || 'placeholder'}`
-          }
-        },
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          flowType: 'pkce'
+    instance = createClient(SB_URL, SB_KEY, {
+      global: { 
+        headers: { 
+          'apikey': SB_KEY,
+          'Authorization': `Bearer ${SB_KEY}`
         }
+      },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
       }
-    );
+    });
   }
   return instance;
 };
 
+// EXPORT THE MASTER CLIENT
 export const supabase = getSupabase();
 
 /**
@@ -68,7 +57,7 @@ export const signInWithGoogle = async (redirectTo: string) => {
   }
 };
 
-export const getSupabaseClient = () => supabase;
+export const getSupabaseClient = (): any => supabase;
 
 /**
  * IDENTITY SYNC: Auto-provision profile on successful handshake

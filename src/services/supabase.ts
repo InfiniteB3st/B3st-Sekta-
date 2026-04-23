@@ -1,6 +1,6 @@
 import { getSupabaseClient } from './supabaseClient';
 
-export function getSupabase() {
+export function getSupabase(): any {
   try {
     return getSupabaseClient();
   } catch (err) {

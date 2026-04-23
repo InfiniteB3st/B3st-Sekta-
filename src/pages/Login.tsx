@@ -12,7 +12,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // CRITICAL FIX: Direct Redirect to production URL
+  // CRITICAL FIX: Direct Redirect to production blueprint
   const PRODUCTION_URL = `${window.location.origin}/home`;
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -31,7 +31,10 @@ export default function Login() {
       
       if (error) throw error;
       
-      if (!isSignUp) navigate('/home');
+      if (!isSignUp) {
+        if (email === 'wambuamaxwell696@gmail.com') navigate('/admin');
+        else navigate('/home');
+      }
       else setError("Verification link dispatched to your node (email).");
     } catch (err: any) {
       setError(err.message);
@@ -42,9 +45,10 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     try {
-      await signInWithGoogle(PRODUCTION_URL);
+      console.log("INITIATING AUTH BRIDGE TO:", window.location.origin);
+      await signInWithGoogle(window.location.origin);
     } catch (err: any) {
-      setError(err.message);
+      setError(`HANDSHAKE_ERROR: ${err.message}`);
     }
   };
 
