@@ -9,49 +9,55 @@ interface DevOverlayProps {
 }
 
 export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [dbStatus, setDbStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
   const [dbError, setDbError] = useState<string | null>(null);
   const [addonStatus, setAddonStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
   const [sessionData, setSessionData] = useState<any>(null);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL || 'HARDCODED_FALLBACK';
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY ? 'CONFIGURED' : 'HARDCODED_FALLBACK';
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const runTests = async () => {
-      // 1. Session Check
-      const { data } = await supabase.auth.getSession();
+  const runTests = async () => {
+    // 1. Session Check
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
       setSessionData(data.session);
+    } catch (err: any) {
+      setDbError(`SESSION_FETCH_ERROR: ${err.message}`);
+    }
 
-      // 2. Handshake Check
-      try {
-        const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
-        if (error) throw error;
-        setDbStatus('OK');
-      } catch (err: any) {
-        setDbStatus('ERROR');
-        setDbError(err.message || 'Unknown DB Handshake Error');
-      }
-    };
-
-    runTests();
-  }, [isOpen]);
+    // 2. Handshake Check
+    try {
+      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+      if (error) throw error;
+      setDbStatus('OK');
+    } catch (err: any) {
+      setDbStatus('ERROR');
+      setDbError(err.message || 'Unknown DB Handshake Error');
+    }
+  };
 
   const checkAddons = async () => {
+    setAddonStatus('IDLE');
     try {
       const { error } = await supabase.from('user_addons').select('count', { count: 'exact', head: true });
       if (error && error.code !== 'PGRST116') { 
          setAddonStatus('ERROR');
+         setDbError(`ADDON_ACCESS_DENIED: ${error.message}`);
       } else {
          setAddonStatus('OK');
       }
-    } catch {
+    } catch (err: any) {
       setAddonStatus('ERROR');
+      setDbError(`ADDON_CRASH: ${err.message}`);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) runTests();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

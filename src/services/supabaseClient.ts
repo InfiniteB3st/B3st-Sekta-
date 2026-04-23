@@ -5,8 +5,19 @@ import { createClient } from '@supabase/supabase-js';
  * Explicitly engineered to prevent OAuth Channel Blockage and "No API Key" Race Conditions.
  */
 
-const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+const getEnv = (key: string) => {
+  // Multi-Prefix check: VITE_, REACT_APP_, or direct
+  return (
+    import.meta.env[key] || 
+    import.meta.env[`VITE_${key}`] || 
+    import.meta.env[`REACT_APP_${key}`] || 
+    (typeof process !== 'undefined' ? process?.env?.[key] : '') ||
+    ''
+  );
+};
+
+const SB_URL = getEnv('SUPABASE_URL') || "https://wnjdlqqlmzjklxcgiqap.supabase.co";
+const SB_KEY = getEnv('SUPABASE_ANON_KEY') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
 // Singleton Instance Holder
 let instance: ReturnType<typeof createClient> | null = null;
