@@ -67,16 +67,18 @@ export default function AddonManager() {
       let targetUrl = manifestUrl.replace('stremio://', 'https://');
       if (!targetUrl.endsWith('/manifest.json') && !targetUrl.includes('.json')) {
         targetUrl = targetUrl.replace(/\/$/, '') + '/manifest.json';
+        // Handle cases where the URL might be a repo or similar
       }
 
+      console.log(`DIAGNOSTIC: Handshaking with node at ${targetUrl}`);
       const response = await fetch(targetUrl);
-      if (!response.ok) throw new Error("Could not reach manifest endpoint.");
+      if (!response.ok) throw new Error("Handshake Failed: Node endpoint unreachable.");
       
       const manifest = await response.json();
       
       // Strict Validation Logic
       if (!manifest.id || !manifest.name || !Array.isArray(manifest.resources)) {
-        throw new Error("Invalid Add-on Manifest. Missing ID, Name, or Resources.");
+        throw new Error("Invalid Add-on Manifest. Missing ID, Name, or Resource Logic.");
       }
 
       const newAddon: AddonManifest = {
@@ -84,7 +86,7 @@ export default function AddonManager() {
         name: manifest.name,
         version: manifest.version || '1.0.0',
         description: manifest.description || 'Verified B3st Sekta Streaming Node.',
-        url: manifestUrl,
+        url: targetUrl,
         enabled: true,
         type: manifest.types?.includes('movie') ? 'streaming' : 'catalog'
       };

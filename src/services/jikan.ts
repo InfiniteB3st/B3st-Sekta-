@@ -79,9 +79,19 @@ export const jikanService = {
     }
   },
 
-  searchAnime: async (query: string): Promise<Anime[]> => {
+  searchAnime: async (query: string, options: any = {}): Promise<Anime[]> => {
     try {
-      const data = await fetchWithRetry(`${JIKAN_BASE_URL}/anime?q=${encodeURIComponent(query)}&order_by=popularity`);
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      params.append('order_by', options.order_by || 'popularity');
+      
+      if (options.genres) params.append('genres', options.genres);
+      if (options.status) params.append('status', options.status);
+      if (options.rating) params.append('rating', options.rating);
+      if (options.score) params.append('min_score', options.score);
+      if (options.start_date) params.append('start_date', options.start_date);
+      
+      const data = await fetchWithRetry(`${JIKAN_BASE_URL}/anime?${params.toString()}`);
       return data?.data || [];
     } catch (err) {
       console.error('Failed to search anime:', err);

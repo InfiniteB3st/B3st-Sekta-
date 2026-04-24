@@ -17,6 +17,7 @@ import AddonManager from './pages/AddonManager';
 import AnimeDetails from './pages/AnimeDetails';
 import Watch from './pages/Watch';
 import AdminPanel from './pages/AdminPanel';
+import { jikanService } from './services/jikan';
 import { HelpCenter, DMCA, Terms, Privacy } from './components/FooterPages';
 import { DevOverlay } from './components/DevOverlay';
 
@@ -76,7 +77,7 @@ export default function App() {
     document.head.appendChild(style);
     document.title = "B3st Sekta";
 
-    // DB Probe
+    // AUTH OBSERVER & DB PROBE
     const checkDb = async () => {
       try {
         const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
@@ -88,7 +89,43 @@ export default function App() {
         setIsDbOffline(true);
       }
     };
+
     checkDb();
+
+    // Listen for Auth Changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+       console.log(`AUTH_EVENT: ${event}`, session?.user?.id);
+       if (event === 'SIGNED_IN') checkDb();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // DYNAMIC FAVICON LOGIC
+    const updateFavicon = async () => {
+       try {
+          const { data } = await supabase.from('watch_history').select('anime_id').order('watched_at', { ascending: false }).limit(1).single();
+          let animeId = data?.anime_id;
+          
+          if (!animeId) {
+             const top = await jikanService.getTopByPopularity(1);
+             animeId = top[0]?.mal_id;
+          }
+
+          if (animeId) {
+             const anime = await jikanService.getAnimeById(animeId);
+             const imageUrl = anime.images.webp.image_url;
+             const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement || document.createElement('link');
+             link.rel = 'icon';
+             link.href = imageUrl;
+             document.getElementsByTagName('head')[0].appendChild(link);
+          }
+       } catch (err) {
+          console.warn("Favicon update failed:", err);
+       }
+    };
+    updateFavicon();
   }, []);
 
   useEffect(() => {
