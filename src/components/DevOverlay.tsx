@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, envSource } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Database, Layout, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Shield, Database, Layout, X, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface DevOverlayProps {
   isOpen: boolean;
@@ -14,32 +14,46 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
   const [dbError, setDbError] = useState<string | null>(null);
   const [addonStatus, setAddonStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
   const [sessionData, setSessionData] = useState<any>(null);
+  const [permissionStatus, setPermissionStatus] = useState<'IDLE' | 'OK' | 'DENIED'>('IDLE');
 
   const supabaseUrlState = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL ? 'RESOLVED' : 'FALLBACK_ACTIVE';
   const anonKeyState = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY ? 'RESOLVED' : 'FALLBACK_ACTIVE';
 
   const runTests = async () => {
-    // 1. Session Check (Detailed)
+    // 1. Handshake Test (getUser check)
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        if (error.status === 401) setDbError('EXPIRED OR INVALID API KEY (401)');
+        else setDbError(`AUTH_HANDSHAKE_FAILURE: ${error.message}`);
+      }
+    } catch (err: any) {
+      setDbError(`UNKNOWN_HANDSHAKE_ERROR: ${err.message}`);
+    }
+
+    // 2. Session Check (Detailed)
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
-      setSessionData(data); // Store the whole response including user/session
+      setSessionData(data); 
     } catch (err: any) {
       setDbError(`SESSION_FETCH_ERROR: ${err.message}`);
     }
 
-    // 2. Handshake Check (Live Ping)
+    // 3. Permission Audit (profiles select)
     try {
-      const { data, error } = await supabase.from('profiles').select('id').limit(1);
+      const { error } = await supabase.from('profiles').select('id').limit(1);
       if (error) {
+        setPermissionStatus('DENIED');
         setDbStatus('ERROR');
-        setDbError(`LIVE_DB_PING_FAILED [profiles]: ${error.message} (Code: ${error.code})`);
+        setDbError(`PERMISSION_AUDIT_FAILED [profiles]: ${error.message} (Code: ${error.code})`);
       } else {
+        setPermissionStatus('OK');
         setDbStatus('OK');
       }
     } catch (err: any) {
+      setPermissionStatus('DENIED');
       setDbStatus('ERROR');
-      setDbError(err.message || 'Unknown DB Handshake Error');
     }
   };
 
@@ -92,8 +106,8 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <MetricCard 
             label="Handshake" 
-            value={dbStatus === 'OK' ? 'SECURE' : 'COMPROMISED'} 
-            status={dbStatus === 'OK' ? 'success' : 'error'} 
+            value={dbError?.includes('401') ? 'EXPIRED/INVALID' : (dbStatus === 'OK' ? 'SECURE' : 'COMPROMISED')} 
+            status={dbError?.includes('401') || dbStatus === 'ERROR' ? 'error' : 'success'} 
             sub={dbError || 'Direct tunnel established'}
           />
           <MetricCard 
@@ -140,16 +154,16 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
               </div>
            </div>
 
-           <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
-              <h3 className="text-white font-black uppercase flex items-center gap-3">
-                <Layout size={18} className="text-[#ffb100]" /> Redirect Blueprints
-              </h3>
-              <div className="space-y-4">
-                 <EnvRow label="Origin (CORS)" value={window.location.origin} />
-                 <EnvRow label="Redirect Target" value={`${window.location.origin}/home`} />
-                 <EnvRow label="User ID" value={user?.id || 'null'} />
-              </div>
-           </div>
+          <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
+             <h3 className="text-white font-black uppercase flex items-center gap-3">
+               <ShieldCheck size={18} className="text-[#ffb100]" /> Metadata Probe
+             </h3>
+             <div className="space-y-4">
+                <EnvRow label="IDENTITIES" value={user?.identities?.map((id: any) => id.provider).join(', ') || 'NONE'} />
+                <EnvRow label="PERMISSION_AUDIT" value={permissionStatus} />
+                <EnvRow label="AUTH_METHOD" value={user?.app_metadata?.provider || 'EMAIL/PASS'} />
+             </div>
+          </div>
         </div>
 
         {/* LOGS & JSON BLOB */}

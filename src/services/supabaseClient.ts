@@ -19,12 +19,12 @@ const getEnv = (key: string) => {
   return val;
 };
 
-// CRITICAL: Hard-coded Fallbacks as Primary Source to fix Vercel Environment failures
-const SB_URL = getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL') || "https://wnjdlqqlmzjklxcgiqap.supabase.co";
-const SB_KEY = getEnv('SUPABASE_ANON_KEY') || getEnv('VITE_SUPABASE_ANON_KEY') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+// CRITICAL: Hard-coded Primary Sources to bypass Vercel Environment failures
+const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
 // Detection for Diagnostic Overlay
-export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Bypass Source";
+export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Primary Source";
 
 // Singleton Instance Holder
 let instance: ReturnType<typeof createClient> | null = null;
@@ -55,6 +55,33 @@ export const getSupabase = (): any => {
 
 // EXPORT THE MASTER CLIENT
 export const supabase = getSupabase();
+
+/**
+ * IDENTITY MANAGEMENT FUNCTIONS
+ */
+
+export const updateUserEmail = async (newEmail: string) => {
+  const { data, error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) throw error;
+  return data;
+};
+
+export const updateUserPassword = async (password: string) => {
+  const { data, error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+  return data;
+};
+
+export const updateUsername = async (userId: string, username: string) => {
+  const { data, error } = await (supabase as any)
+    .from('profiles')
+    .update({ username, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
 
 /**
  * Robust OAuth Wrapper to prevent "Channel Blocked" errors
@@ -89,23 +116,9 @@ export const syncUserProfile = async (user: any) => {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!profile && !fetchError) {
-    console.log("IDENTITY PROTECOL: Auto-generating profile for new node:", user.id);
-    const { data: newProfile, error: createError } = await (supabase as any)
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        username: user.user_metadata?.full_name || user.email?.split('@')[0] || 'sekta_member',
-        email: user.email,
-        accent_color: '#ffb100', // Default HiAnime Yellow
-        avatar_url: user.user_metadata?.avatar_url || 'https://i.imgur.com/Heuy9Y8.png',
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' })
-      .select()
-      .single();
-    
-    if (createError) console.error('Profile Provisioning Failed:', createError);
-    return newProfile;
+  if (fetchError) {
+    console.error('Handshake Sync Error:', fetchError);
+    return null;
   }
   
   return profile;

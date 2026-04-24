@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Palette, LogOut, Save, Camera, ShieldCheck, Mail, Database, RefreshCw, Loader2 } from 'lucide-react';
+import { User, Palette, LogOut, Save, Camera, ShieldCheck, Mail, Database, RefreshCw, Loader2, Lock, Chrome, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getSupabase } from '../services/supabase';
+import { supabase, updateUserEmail, updateUserPassword, updateUsername } from '../services/supabaseClient';
 import ListManager from '../components/ListManager';
 
 const ACCENT_COLORS = [
@@ -17,17 +17,20 @@ const ACCENT_COLORS = [
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
-  const supabase = getSupabase();
   const [activeTab, setActiveTab] = useState('profile');
   const [newUsername, setNewUsername] = useState(profile?.username || '');
+  const [newEmail, setNewEmail] = useState(user?.email || '');
+  const [newPassword, setNewPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     if (profile) setNewUsername(profile.username);
-  }, [profile]);
+    if (user) setNewEmail(user.email || '');
+  }, [profile, user]);
 
   const handleUpdateAccent = async (color: string) => {
-    if (!user || !supabase) return;
+    if (!user) return;
     const { error } = await supabase
       .from('profiles')
       .update({ accent_color: color, updated_at: new Date().toISOString() })
@@ -41,19 +44,55 @@ export default function Profile() {
   };
 
   const handleIdentityUpdate = async () => {
-    if (!user || !supabase || !newUsername) return;
+    if (!user || !newUsername) return;
     setIsSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: newUsername, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
-    
-    if (!error) await refreshProfile();
-    setIsSaving(false);
+    setMessage(null);
+    try {
+      await updateUsername(user.id, newUsername);
+      await refreshProfile();
+      setMessage({ type: 'success', text: 'Identity updated successfully.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSecurityUpdate = async (type: 'email' | 'password') => {
+    if (!user) return;
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      if (type === 'email') {
+        await updateUserEmail(newEmail);
+        setMessage({ type: 'success', text: 'Email update initialized. Check your inbox.' });
+      } else {
+        await updateUserPassword(newPassword);
+        setMessage({ type: 'success', text: 'Password updated successfully.' });
+        setNewPassword('');
+      }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const linkGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/profile' }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    }
   };
 
   const tabs = [
     { id: 'profile', icon: User, label: 'Identity' },
+    { id: 'security', icon: Lock, label: 'Security' },
     { id: 'appearance', icon: Palette, label: 'Visuals' },
     { id: 'lists', icon: Database, label: 'Lists' },
   ];
@@ -171,6 +210,13 @@ export default function Profile() {
                               </div>
                            </div>
                         </div>
+                        
+                        {message && (
+                          <div className={`p-6 rounded-2xl flex items-center gap-4 border ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                            {message.type === 'success' ? <ShieldCheck size={18} /> : <AlertTriangle size={18} />}
+                            <span className="text-[10px] font-black uppercase tracking-widest">{message.text}</span>
+                          </div>
+                        )}
 
                         <button 
                           onClick={handleIdentityUpdate}
@@ -179,6 +225,77 @@ export default function Profile() {
                         >
                            {isSaving ? <RefreshCw className="animate-spin" size={24} /> : <>Save Changes <Save size={24} /></>}
                         </button>
+                      </div>
+                    )}
+
+                    {activeTab === 'security' && (
+                      <div className="space-y-16">
+                        <div className="space-y-4">
+                           <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter">Security Protocols</h2>
+                           <p className="text-[10px] font-bold text-gray-700 uppercase tracking-widest leading-loose">
+                             Update your credentials and link external identity providers.
+                           </p>
+                        </div>
+
+                        {message && (
+                          <div className={`p-6 rounded-2xl flex items-center gap-4 border ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                            {message.type === 'success' ? <ShieldCheck size={18} /> : <AlertTriangle size={18} />}
+                            <span className="text-[10px] font-black uppercase tracking-widest">{message.text}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-12">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            <div className="space-y-4">
+                               <label className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-700 ml-4">Update Email</label>
+                               <div className="flex gap-4">
+                                 <input 
+                                   type="email" 
+                                   value={newEmail}
+                                   onChange={(e) => setNewEmail(e.target.value)}
+                                   className="flex-1 bg-[#0f0f0f] border-2 border-white/5 focus:border-primary px-20 py-8 rounded-[2.5rem] text-sm font-black text-white tracking-widest outline-none transition-all"
+                                 />
+                                 <button 
+                                   onClick={() => handleSecurityUpdate('email')}
+                                   className="bg-white/5 hover:bg-white/10 px-8 rounded-[1.5rem] transition-all"
+                                 >
+                                   <Save size={18} className="text-primary" />
+                                 </button>
+                               </div>
+                            </div>
+                            <div className="space-y-4">
+                               <label className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-700 ml-4">Set Password</label>
+                               <div className="flex gap-4">
+                                 <input 
+                                   type="password" 
+                                   placeholder="NEW_PASSCODE"
+                                   value={newPassword}
+                                   onChange={(e) => setNewPassword(e.target.value)}
+                                   className="flex-1 bg-[#0f0f0f] border-2 border-white/5 focus:border-primary px-20 py-8 rounded-[2.5rem] text-sm font-black text-white tracking-widest outline-none transition-all"
+                                 />
+                                 <button 
+                                   onClick={() => handleSecurityUpdate('password')}
+                                   className="bg-white/5 hover:bg-white/10 px-8 rounded-[1.5rem] transition-all"
+                                 >
+                                   <Save size={18} className="text-primary" />
+                                 </button>
+                               </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-12 border-t border-white/5 space-y-6">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-700 ml-4">OAuth Identity Bridges</h4>
+                            <div className="flex flex-wrap gap-4">
+                               <button 
+                                 onClick={linkGoogle}
+                                 className="bg-white text-black px-10 py-6 rounded-[2rem] font-black text-[10px] uppercase tracking-widest flex items-center gap-4 hover:scale-105 active:scale-95 transition-all shadow-2xl"
+                               >
+                                 <Chrome size={18} className="text-[#4285F4]" />
+                                 Link Google Account
+                               </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, signInWithGoogle } from '../services/supabaseClient';
-import { Mail, Lock, LogIn, Chrome, ShieldAlert, Zap } from 'lucide-react';
+import { Mail, Lock, LogIn, Chrome, ShieldAlert, Zap, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 
@@ -8,6 +8,7 @@ export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -21,21 +22,33 @@ export default function Login() {
     setError(null);
 
     try {
-      const { error } = isSignUp 
-        ? await supabase.auth.signUp({ 
-            email, 
-            password,
-            options: { emailRedirectTo: PRODUCTION_URL } 
-          })
-        : await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) throw error;
-      
-      if (!isSignUp) {
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: { 
+            emailRedirectTo: PRODUCTION_URL,
+            data: { username } // Store in metadata too for easy access
+          } 
+        });
+        if (error) throw error;
+        
+        // Manual profile provision start if needed, but usually we do it on sync
+        if (data.user) {
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            username: username.toLowerCase().replace(/\s/g, ''),
+            email: email,
+            updated_at: new Date().toISOString()
+          });
+        }
+        setError("Verification link dispatched to your node (email).");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
         if (email === 'wambuamaxwell696@gmail.com') navigate('/admin');
         else navigate('/home');
       }
-      else setError("Verification link dispatched to your node (email).");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -76,6 +89,19 @@ export default function Login() {
 
           <form onSubmit={handleEmailAuth} className="space-y-6">
             <div className="space-y-4">
+              {isSignUp && (
+                <div className="relative group">
+                  <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-700 group-focus-within:text-[#ffb100] transition-colors" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="USERNAME"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-black/40 border-2 border-white/5 rounded-2xl py-6 pl-16 pr-6 text-xs font-black tracking-widest focus:outline-none focus:border-[#ffb100] transition-all text-white placeholder:text-gray-800"
+                    required={isSignUp}
+                  />
+                </div>
+              )}
               <div className="relative group">
                 <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-700 group-focus-within:text-[#ffb100] transition-colors" size={18} />
                 <input 
