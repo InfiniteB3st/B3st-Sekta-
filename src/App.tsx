@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Database } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
@@ -48,6 +50,8 @@ function MasterGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   const [showDiagnostics, setShowDiagnostics] = React.useState(false);
 
+  const [isDbOffline, setIsDbOffline] = React.useState(false);
+
   useEffect(() => {
     // Inject global styles to ensure Branding consistency
     const style = document.createElement('style');
@@ -67,6 +71,11 @@ export default function App() {
     `;
     document.head.appendChild(style);
     document.title = "B3st Sekta";
+
+    // DB Probe
+    supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1).then(({ error }) => {
+      if (error && error.code === '401') setIsDbOffline(true);
+    }).catch(() => setIsDbOffline(true));
   }, []);
 
   useEffect(() => {
@@ -79,6 +88,28 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  if (isDbOffline) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in duration-700">
+        <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center text-primary animate-pulse border-4 border-primary/20">
+          <Database size={64} />
+        </div>
+        <div className="space-y-4">
+          <h1 className="text-4xl font-black italic text-white uppercase tracking-tighter">System Maintenance: Connection Lost</h1>
+          <p className="text-gray-500 max-w-sm font-black uppercase tracking-[0.2em] text-[10px] leading-relaxed">
+            The database node has rejected the handshake. Please check your Supabase API credentials in services/supabaseClient.ts.
+          </p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-primary text-black px-12 py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl hover:scale-105 active:scale-95 transition-all"
+        >
+          ATTEMPT RE-SYNCHRONIZATION
+        </button>
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider>

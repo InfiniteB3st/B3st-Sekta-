@@ -20,13 +20,17 @@ const getEnv = (key: string) => {
 };
 
 // CRITICAL: Hard-coded Primary Sources for rock-solid deployment stability.
-// DIRECTOR: Replace this SB_KEY with the EXACT key from Supabase > Settings > API > anon
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
 // MASTER CLIENT PROVISIONING
 export const supabase = createClient(SB_URL, SB_KEY, {
-  global: { headers: { 'apikey': SB_KEY } },
+  global: { 
+    headers: { 
+      'apikey': SB_KEY,
+      'Authorization': `Bearer ${SB_KEY}`
+    } 
+  },
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -37,36 +41,24 @@ export const supabase = createClient(SB_URL, SB_KEY, {
 
 // WATCH HISTORY PROTOCOL (INCOGNITO COMPLIANT)
 export const syncWatchHistory = async (history: any) => {
-  const { user_id, anime_id, episode_id } = history;
+  const { user_id, anime_id } = history;
   
   if (!user_id) {
-    // INCOGNITO MODE: Store in localStorage
     const localHistory = JSON.parse(localStorage.getItem('sekta_history') || '[]');
     const existingIndex = localHistory.findIndex((h: any) => h.anime_id === anime_id);
-    
     const newEntry = { ...history, updated_at: new Date().toISOString() };
-    if (existingIndex > -1) {
-      localHistory[existingIndex] = newEntry;
-    } else {
-      localHistory.unshift(newEntry);
-    }
-    
+    if (existingIndex > -1) localHistory[existingIndex] = newEntry;
+    else localHistory.unshift(newEntry);
     localStorage.setItem('sekta_history', JSON.stringify(localHistory.slice(0, 50)));
     return;
   }
 
-  // LOGGED IN: Sync to Supabase
   const { error } = await supabase
     .from('watch_history')
-    .upsert({
-      ...history,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,anime_id' });
-
+    .upsert({ ...history, updated_at: new Date().toISOString() }, { onConflict: 'user_id,anime_id' });
   if (error) console.error('Cloud Sync Failed:', error);
 };
 
-// Detection for Diagnostic Overlay
 export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Primary Source";
 
 export const getKeyHandshake = () => ({
