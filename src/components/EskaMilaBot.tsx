@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Bot, Terminal, Zap, ShieldAlert, Sparkles, MessageSquare, Plus, Trash2, History, Cpu } from 'lucide-react';
-import { getEskaMilaResponse } from '../services/gemini';
+import { getEskaMilaResponse } from '../services/eskaMilaEngine';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../services/supabaseClient';

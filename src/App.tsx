@@ -94,10 +94,13 @@ function MasterGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function App() {
+function AppContent() {
+  const { user } = useAuth();
   const [showDiagnostics, setShowDiagnostics] = React.useState(false);
   const [isDbOffline, setIsDbOffline] = React.useState(false);
   const [addons, setAddons] = React.useState<any[]>([]);
+
+  const isAdmin = user?.email === 'wambuamaxwell696@gmail.com';
 
   useEffect(() => {
     // Inject global styles to ensure Branding consistency
@@ -179,17 +182,6 @@ export default function App() {
     updateFavicon();
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Emergency bypass shortcut: Ctrl + Shift + Z
-      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
-        setShowDiagnostics(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   if (isDbOffline) {
     return (
       <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in duration-700">
@@ -213,50 +205,56 @@ export default function App() {
   }
 
   return (
+    <Router>
+      <MasterGuard>
+        <Gatekeeper>
+          <Layout>
+            <Routes>
+              {/* Public Entry */}
+              <Route path="/" element={<LandingPage />} />
+              
+              {/* Public Core */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth" element={<Navigate to="/login" replace />} />
+              <Route path="/finish-setup" element={<SetupAccount />} />
+              
+              {/* Authenticated Application */}
+              <Route path="/" element={<Home />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/filter" element={<Filter />} />
+              <Route path="/anime/:id" element={<AnimeDetails />} />
+              <Route path="/watch/:id" element={<Watch />} />
+              
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/addons" element={<AddonManager />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              
+              {/* Footer Pages */}
+              <Route path="/help" element={<HelpCenter />} />
+              <Route path="/dmca" element={<DMCA />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              
+              {/* Global Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+        </Gatekeeper>
+      </MasterGuard>
+      <Suspense fallback={null}>
+        {isAdmin && <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />}
+      </Suspense>
+    </Router>
+  );
+}
+
+export default function App() {
+  return (
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <Router>
-            <MasterGuard>
-              <Gatekeeper>
-                <Layout>
-                  <Routes>
-                    {/* Public Entry */}
-                    <Route path="/" element={<LandingPage />} />
-                    
-                    {/* Public Core */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/auth" element={<Navigate to="/login" replace />} />
-                    <Route path="/finish-setup" element={<SetupAccount />} />
-                    
-                    {/* Authenticated Application */}
-                    <Route path="/" element={<Home />} />
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/filter" element={<Filter />} />
-                    <Route path="/anime/:id" element={<AnimeDetails />} />
-                    <Route path="/watch/:id" element={<Watch />} />
-                    
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/addons" element={<AddonManager />} />
-                    <Route path="/admin" element={<AdminPanel />} />
-                    
-                    {/* Footer Pages */}
-                    <Route path="/help" element={<HelpCenter />} />
-                    <Route path="/dmca" element={<DMCA />} />
-                    <Route path="/terms" element={<Terms />} />
-                    <Route path="/privacy" element={<Privacy />} />
-                    
-                    {/* Global Fallback */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </Layout>
-              </Gatekeeper>
-            </MasterGuard>
-          <Suspense fallback={null}>
-            <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
-          </Suspense>
-          </Router>
+          <AppContent />
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

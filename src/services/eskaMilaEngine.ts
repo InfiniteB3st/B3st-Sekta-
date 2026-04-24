@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from "./supabaseClient";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const eskaMilaNode = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: any) => {
   try {
@@ -18,7 +18,7 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
       timestamp: new Date().toISOString()
     };
 
-    const response = await ai.models.generateContent({
+    const response = await eskaMilaNode.models.generateContent({
       model: "gemini-1.5-pro",
       contents: [
         {

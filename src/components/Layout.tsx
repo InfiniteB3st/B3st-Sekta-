@@ -48,6 +48,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                  <Link to="/home" className="text-xs font-black uppercase tracking-widest text-white/40 hover:text-primary transition-all">Home</Link>
                  <Link to="/filter" className="text-xs font-black uppercase tracking-widest text-white/40 hover:text-primary transition-all">Filter</Link>
                  <Link to="/addons" className="text-xs font-black uppercase tracking-widest text-white/40 hover:text-primary transition-all">Extensions</Link>
+                 {user?.email === 'wambuamaxwell696@gmail.com' && (
+                   <Link to="/admin" className="text-xs font-black uppercase tracking-widest text-primary italic hover:scale-105 transition-all">Admin</Link>
+                 )}
               </nav>
 
               <div className="flex items-center gap-6">
