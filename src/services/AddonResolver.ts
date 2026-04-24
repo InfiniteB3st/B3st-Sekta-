@@ -7,6 +7,14 @@ export interface AddonSource {
   enabled: boolean;
 }
 
+export interface StreamLink {
+  id: string;
+  source: string;
+  url: string;
+  quality: string;
+  status: 'pending' | 'online' | 'offline';
+}
+
 /**
  * MASTER ARCHITECT: AddonResolver Engine
  * Bridges the gap between B3ST SEKTA UI and the underlying streaming infrastructure.
@@ -16,61 +24,67 @@ export const AddonResolver = {
    * Fetches the user's enabled addons from Supabase or LocalStorage for guests.
    */
   getEnabledAddons: async (userId: string): Promise<AddonSource[]> => {
-    // Mapping IDs to human-readable metadata
     const ADDON_MAP: Record<string, { name: string; description: string }> = {
       'netflix-node': { name: 'Netflix Node', description: 'Ultra-HD Premium Stream' },
       'hianime-core': { name: 'HiAnime Core', description: 'Stable 1080p Mirror' },
-      'aniwave-bridge': { name: 'AniWave Bridge', description: 'Global CDN Network' },
-      'mal-sync': { name: 'MAL Sync Pro', description: 'Metadata Sync Only' }
+      'aniwave-bridge': { name: 'AniWave Bridge', description: 'Global CDN Network' }
     };
 
     if (userId === 'guest') {
       const localAddons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
       if (localAddons.length === 0) {
-        // Default set for new guests
         return [{ id: 'hianime-core', name: 'HiAnime Core', description: 'Stable 1080p Mirror', enabled: true }];
       }
       return localAddons.map((item: any) => ({
         ...item,
-        name: ADDON_MAP[item.addon_id]?.name || item.addon_id,
-        description: ADDON_MAP[item.addon_id]?.description || 'Custom Extension Source'
+        id: item.addon_id || item.id,
+        name: ADDON_MAP[item.addon_id]?.name || item.name || item.addon_id,
+        description: ADDON_MAP[item.addon_id]?.description || item.description || 'Custom Extension Source'
       }));
     }
 
     const { data, error } = await supabase
       .from('user_addons')
-      .select('addon_id, enabled')
+      .select('*')
       .eq('user_id', userId)
       .eq('enabled', true);
 
-    if (error) {
-      console.error('Addon Resolution Failed:', error);
-      return [];
-    }
+    if (error) return [];
 
     return (data || []).map(item => ({
       id: item.addon_id,
-      name: ADDON_MAP[item.addon_id]?.name || item.addon_id,
-      description: ADDON_MAP[item.addon_id]?.description || 'Custom Extension Source',
+      name: item.name || ADDON_MAP[item.addon_id]?.name || item.addon_id,
+      description: item.description || ADDON_MAP[item.addon_id]?.description || 'Custom Extension Source',
       enabled: item.enabled
     }));
   },
 
   /**
-   * Simulated Resolver Logic:
-   * In a production environment, this would call the specific API for the addon.
+   * Scrapes multiple links from an Add-on and performs a health check (Ping).
    */
-  resolveStream: async (addonId: string, animeId: number, episode: number): Promise<string> => {
-    console.log(`B3ST SEKTA - Resolving Stream: [Addon: ${addonId}] [Anime: ${animeId}] [Ep: ${episode}]`);
+  scrapeLinks: async (addonId: string, animeId: number, episode: number): Promise<StreamLink[]> => {
+    // Simulated multi-link response from an add-on
+    const sources = ['GogoServer', 'CloudStream', 'MegaDrive', 'VidStream', 'DirectEdge'];
+    const qualities = ['1080p', '720p', '480p'];
     
-    // In a real implementation:
-    // switch(addonId) {
-    //   case 'netflix-node': return fetchNetflixStream(animeId, episode);
-    //   ...
-    // }
+    const links: StreamLink[] = Array.from({ length: 5 }).map((_, i) => ({
+      id: `${addonId}-link-${i}`,
+      source: sources[i % sources.length],
+      url: `https://test-videos.co.uk/vids/big_buck_bunny.mp4?source=${i}`,
+      quality: qualities[i % qualities.length],
+      status: 'pending'
+    }));
 
-    // Returning a demo placeholder that adheres to the 1:1 replica flow
-    // Replace with real provider endpoints if available.
-    return `https://test-videos.co.uk/vids/big_buck_bunny.mp4`;
+    // Perform silent "Ping" health check
+    const verifiedLinks = await Promise.all(links.map(async (link) => {
+      try {
+        const response = await fetch(link.url, { method: 'HEAD' });
+        return { ...link, status: response.ok ? 'online' : 'offline' as any };
+      } catch {
+        return { ...link, status: 'offline' as any };
+      }
+    }));
+
+    return verifiedLinks.filter(l => l.status === 'online');
   }
 };

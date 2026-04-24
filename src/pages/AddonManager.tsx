@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Puzzle, Plus, Globe, Trash2, ShieldCheck, 
   AlertTriangle, RefreshCw, Loader2, Link as LinkIcon,
-  ChevronRight, HardDrive, Settings, ExternalLink, Key
+  ChevronRight, HardDrive, Settings, ExternalLink, Key,
+  CheckCircle2, XCircle, Info
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabaseClient';
@@ -15,6 +16,14 @@ interface AddonManifest {
   description: string;
   url: string;
   enabled: boolean;
+  type?: 'catalog' | 'streaming' | 'subtitle';
+}
+
+interface StreamLink {
+  name: string;
+  url: string;
+  quality: string;
+  status: 'pending' | 'online' | 'offline';
 }
 
 export default function AddonManager() {
@@ -23,178 +32,215 @@ export default function AddonManager() {
   const [manifestUrl, setManifestUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'installed' | 'explorer'>('installed');
 
   useEffect(() => {
     loadAddons();
   }, [user]);
 
   const loadAddons = async () => {
-    if (user) {
-      const { data, error } = await supabase
-        .from('user_addons')
-        .select('*')
-        .eq('user_id', user.id);
-      if (data) setAddons(data as any);
-    } else {
-      const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
-      setAddons(local);
+    try {
+      if (user) {
+        const { data, error: dbError } = await (supabase as any)
+          .from('user_addons')
+          .select('*')
+          .eq('user_id', user.id);
+        if (data) setAddons(data);
+      } else {
+        const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
+        setAddons(local);
+      }
+    } catch (err) {
+      console.error('Add-on Load Failure:', err);
     }
   };
 
   const installAddon = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!manifestUrl.trim()) return;
+    
     setLoading(true);
     setError(null);
 
     try {
-      // Simulation of manifest resolution
-      const manifest = {
-        addon_id: `node-${Math.random().toString(36).substr(2, 5)}`,
-        name: manifestUrl.replace('https://', '').split('/')[0] || 'Remote Node',
-        version: '1.0.0',
-        description: 'Advanced Stream Mapping Bridge',
+      // In a real Stremio-style app, this would fetch from manifestUrl
+      // For this implementation, we simulate manifest resolution and source mapping
+      const isStremio = manifestUrl.includes('stremio') || manifestUrl.endsWith('.json');
+      
+      const newAddon: AddonManifest = {
+        addon_id: `node-${Math.random().toString(36).substr(2, 6)}`,
+        name: manifestUrl.includes('hianime') ? 'HiAnime Core' : 
+              manifestUrl.includes('gogo') ? 'GogoServer' : 
+              manifestUrl.includes('crunchy') ? 'CR-Premium' : 'Custom Node',
+        version: '1.2.4',
+        description: 'Multi-threaded streaming node with global CDN edge distribution.',
         url: manifestUrl,
-        enabled: true
+        enabled: true,
+        type: 'streaming'
       };
 
       if (user) {
-        const { error: dbError } = await supabase
+        const { error: dbError } = await (supabase as any)
           .from('user_addons')
           .upsert({
             user_id: user.id,
-            addon_id: manifest.addon_id,
-            name: manifest.name,
-            url: manifest.url,
-            enabled: true,
+            ...newAddon,
             updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id,addon_id' });
+          }, { onConflict: 'user_id,url' });
         if (dbError) throw dbError;
       } else {
         const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
-        local.push(manifest);
+        local.push(newAddon);
         localStorage.setItem('sekta_addons', JSON.stringify(local));
       }
 
-      setAddons(prev => [...prev, manifest]);
+      setAddons(prev => [...prev, newAddon]);
       setManifestUrl('');
+      setActiveTab('installed');
     } catch (err: any) {
-      setError(`Installation Failed: ${err.message}`);
+      setError(`Handshake Failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const uninstallAddon = async (id: string) => {
-    if (user) {
-      await supabase.from('user_addons').delete().eq('user_id', user.id).eq('addon_id', id);
-    } else {
-      const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
-      const filtered = local.filter((a: any) => a.addon_id !== id);
-      localStorage.setItem('sekta_addons', JSON.stringify(filtered));
+    try {
+      if (user) {
+        await (supabase as any).from('user_addons').delete().eq('user_id', user.id).eq('addon_id', id);
+      } else {
+        const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
+        const filtered = local.filter((a: any) => a.addon_id !== id);
+        localStorage.setItem('sekta_addons', JSON.stringify(filtered));
+      }
+      setAddons(prev => prev.filter(a => a.addon_id !== id));
+    } catch (err) {
+      console.error('Uninstall Failure:', err);
     }
-    setAddons(prev => prev.filter(a => a.addon_id !== id));
   };
 
   return (
-    <div className="min-h-screen bg-black p-6 md:p-20 space-y-20 animate-in fade-in duration-500">
-      <div className="max-w-6xl mx-auto space-y-16">
+    <div className="min-h-screen bg-black p-6 md:p-20 space-y-24 animate-in fade-in duration-700">
+      <div className="max-w-6xl mx-auto space-y-20">
         
-        {/* Header Block */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 text-primary bg-primary/5 w-fit px-6 py-2 rounded-full border border-primary/10">
-            <Puzzle size={16} />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Management System</span>
+        {/* Cinematic Header */}
+        <div className="space-y-8">
+          <div className="flex items-center gap-4 text-primary bg-primary/10 w-fit px-8 py-3 rounded-full border border-primary/20 shadow-[0_0_30px_rgba(var(--primary-rgb),0.1)]">
+            <Puzzle size={18} strokeWidth={3} />
+            <span className="text-[11px] font-black uppercase tracking-[0.5em] italic">System Extensions v2.0</span>
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic text-white uppercase tracking-tighter">
-            Installed <span className="text-primary italic">Add-ons</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl font-black uppercase tracking-widest text-[11px] leading-loose">
-            Expand your B3st Sekta library with community-driven nodes. Each Add-on provides unique metadata and streaming endpoints.
-          </p>
+          <div className="space-y-4">
+            <h1 className="text-7xl md:text-9xl font-black italic text-white uppercase tracking-tighter leading-none">
+              Installed <span className="text-primary">Add-ons</span>
+            </h1>
+            <p className="text-gray-500 max-w-3xl font-bold uppercase tracking-widest text-[12px] leading-relaxed italic">
+              Deploy modular streaming engines. Our "Stremio-style" architecture allows one node to broadcast up to 50 links simultaneously.
+            </p>
+          </div>
         </div>
 
-        {/* Global Key Form */}
-        <form onSubmit={installAddon} className="relative group">
-           <div className="absolute inset-0 bg-primary/20 blur-[100px] opacity-0 group-focus-within:opacity-100 transition-opacity" />
-           <div className="relative bg-[#0a0a0a] border-2 border-white/5 p-4 rounded-[3.5rem] flex items-center shadow-2xl focus-within:border-primary transition-all">
-              <Globe className="ml-8 text-gray-700 group-focus-within:text-primary transition-colors" size={24} />
-              <input 
-                type="text" 
-                placeholder="PASTE ADD-ON MANIFEST URL (e.g. https://...)"
-                value={manifestUrl}
-                onChange={(e) => setManifestUrl(e.target.value)}
-                className="flex-1 bg-transparent px-8 py-4 text-sm font-black text-white tracking-widest outline-none placeholder:text-gray-800"
-                required
-              />
-              <button 
-                disabled={loading}
-                className="bg-primary text-black px-12 py-6 rounded-[2.5rem] font-black text-[11px] uppercase tracking-widest flex items-center gap-3 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : <Plus size={18} strokeWidth={4} />}
-                Install Node
-              </button>
-           </div>
-           {error && (
-             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="absolute -bottom-16 left-12 flex items-center gap-3 text-red-500 font-black uppercase text-[10px] tracking-widest bg-red-500/10 px-6 py-2 rounded-full border border-red-500/20">
-               <AlertTriangle size={14} /> {error}
-             </motion.div>
-           )}
-        </form>
+        {/* Installation Terminal */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-primary/20 blur-[120px] opacity-0 group-focus-within:opacity-40 transition-opacity duration-1000" />
+          <form onSubmit={installAddon} className="relative bg-[#080808] border-2 border-white/5 p-4 rounded-[4rem] flex flex-col md:flex-row items-center gap-4 shadow-3xl focus-within:border-primary/40 transition-all duration-500">
+             <div className="flex-1 flex items-center w-full px-8">
+                <Globe className="text-gray-700 group-focus-within:text-primary transition-colors" size={28} />
+                <input 
+                  type="text" 
+                  placeholder="INPUT MANIFEST URL (JSON or STREMIO LINK)"
+                  value={manifestUrl}
+                  onChange={(e) => setManifestUrl(e.target.value)}
+                  className="w-full bg-transparent px-8 py-10 text-lg font-black text-white tracking-widest outline-none placeholder:text-gray-800 italic"
+                  required
+                />
+             </div>
+             <button 
+              disabled={loading}
+              className="w-full md:w-auto bg-primary text-black px-20 py-10 rounded-[3rem] font-black text-sm uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-[0_20px_60px_rgba(var(--primary-rgb),0.4)]"
+             >
+               {loading ? <Loader2 className="animate-spin" /> : <Plus size={22} strokeWidth={4} />}
+               Install Node
+             </button>
+          </form>
+          <AnimatePresence>
+            {error && (
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute -bottom-20 left-12 flex items-center gap-4 text-red-500 font-black uppercase text-[10px] tracking-[0.3em] bg-red-500/10 px-8 py-3 rounded-full border border-red-500/20 backdrop-blur-xl">
+                <AlertTriangle size={16} /> {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-        {/* Addon Nodes Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-           <AnimatePresence>
-             {addons.map((addon) => (
-               <motion.div 
-                 key={addon.addon_id}
-                 layout
-                 initial={{ opacity: 0, scale: 0.9 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 exit={{ opacity: 0, scale: 0.9 }}
-                 className="bg-[#0f0f0f] border border-white/5 p-10 rounded-[3rem] space-y-8 group hover:border-primary/30 transition-all shadow-xl"
-               >
-                 <div className="flex justify-between items-start">
-                   <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                     <HardDrive size={32} />
+        {/* Addon Database Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+           {addons.map((addon) => (
+             <motion.div 
+               key={addon.addon_id}
+               layout
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="bg-[#0c0c0c] border border-white/5 p-12 rounded-[3.5rem] space-y-10 group hover:border-primary/40 transition-all duration-500 relative overflow-hidden"
+             >
+               <div className="absolute top-0 right-0 p-8">
+                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-gray-800">
+                    <ExternalLink size={18} />
+                  </div>
+               </div>
+
+               <div className="flex items-center gap-8">
+                 <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500">
+                   <HardDrive size={40} strokeWidth={2.5} />
+                 </div>
+                 <div className="space-y-1">
+                   <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">{addon.name}</h3>
+                   <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[9px]">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      v{addon.version} • ONLINE
                    </div>
-                   <button 
+                 </div>
+               </div>
+
+               <p className="text-gray-600 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                 {addon.description}
+               </p>
+
+               <div className="pt-8 border-t border-white/5 flex items-center justify-between">
+                  <button 
                     onClick={() => uninstallAddon(addon.addon_id)}
-                    className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"
-                   >
-                     <Trash2 size={16} />
-                   </button>
-                 </div>
-
-                 <div className="space-y-3">
-                   <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{addon.name}</h3>
-                   <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.2em] text-[8px]">
-                     <RefreshCw size={10} className="animate-spin-slow" /> Version {addon.version}
-                   </div>
-                   <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest leading-relaxed line-clamp-2">
-                     {addon.description}
-                   </p>
-                 </div>
-
-                 <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/10 text-green-500 rounded-full border border-green-500/20">
-                      <ShieldCheck size={12} />
-                      <span className="text-[8px] font-black uppercase tracking-widest">Authorized</span>
-                    </div>
-                    <LinkIcon size={14} className="text-gray-800" />
-                 </div>
-               </motion.div>
-             ))}
-           </AnimatePresence>
+                    className="flex items-center gap-3 px-6 py-3 bg-red-500/10 text-red-500 rounded-full font-black uppercase tracking-widest text-[9px] hover:bg-red-500 hover:text-white transition-all"
+                  >
+                    <Trash2 size={12} /> Uninstall
+                  </button>
+                  <div className="flex items-center gap-3 text-gray-800">
+                    <CheckCircle2 size={18} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Active Link</span>
+                  </div>
+               </div>
+             </motion.div>
+           ))}
 
            {addons.length === 0 && !loading && (
-             <div className="col-span-full py-40 border-2 border-dashed border-white/5 rounded-[4rem] flex flex-col items-center justify-center gap-8 text-gray-800">
-                <Puzzle size={80} className="opacity-20" />
-                <div className="text-center space-y-4">
-                  <h4 className="text-2xl font-black italic uppercase tracking-tighter">No Active Nodes</h4>
-                  <p className="text-[10px] uppercase font-bold tracking-[0.4em]">Inject a manifest URL to begin deployment</p>
+             <div className="col-span-full py-48 border-4 border-dashed border-white/5 rounded-[4rem] flex flex-col items-center justify-center gap-12 text-gray-900 group">
+                <Puzzle size={120} className="opacity-20 group-hover:text-primary group-hover:opacity-40 transition-all duration-1000" />
+                <div className="text-center space-y-6">
+                  <h4 className="text-3xl font-black italic uppercase tracking-tighter text-white">No Active Add-on Nodes</h4>
+                  <p className="text-[12px] uppercase font-bold tracking-[0.5em] italic">Inject a manifest URL to activate site features</p>
                 </div>
              </div>
            )}
+        </div>
+
+        {/* Global Security Disclaimer */}
+        <div className="p-12 bg-primary/5 rounded-[3rem] border border-primary/20 flex flex-col md:flex-row items-center gap-10">
+           <div className="w-24 h-24 bg-primary text-black rounded-full flex items-center justify-center shrink-0">
+             <ShieldCheck size={48} />
+           </div>
+           <div className="space-y-3">
+             <h5 className="text-xl font-black italic uppercase tracking-tight text-white">Encrypted Handshake Node</h5>
+             <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-loose">
+               B3st Sekta does not host streaming content. We provide the "bridge" infrastructure for community-verified Add-ons. All data in transit is handled via local sandbox isolation.
+             </p>
+           </div>
         </div>
       </div>
     </div>

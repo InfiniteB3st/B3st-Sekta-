@@ -73,7 +73,7 @@ export default function Filter() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-8">
             {results.map((anime) => (
-              <AnimeCard key={anime.mal_id} anime={anime} accentColor="#ffb100" />
+              <AnimeCard key={anime.mal_id} anime={anime} />
             ))}
           </div>
         )}

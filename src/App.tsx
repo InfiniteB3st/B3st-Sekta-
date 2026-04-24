@@ -68,14 +68,24 @@ export default function App() {
       }
       .accent-yellow { color: #ffb100; }
       .bg-yellow { background-color: #ffb100; }
+      
+      /* Global Scraper UI Improvements */
+      .source-active { border-color: #ffb100; background: rgba(255, 177, 0, 0.1); }
+      .source-inactive { border-color: rgba(255, 255, 255, 0.05); }
     `;
     document.head.appendChild(style);
     document.title = "B3st Sekta";
 
     // DB Probe
-    supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1).then(({ error }) => {
-      if (error && error.code === '401') setIsDbOffline(true);
-    }).catch(() => setIsDbOffline(true));
+    const checkDb = async () => {
+      try {
+        const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
+        if (error && error.code === '401') setIsDbOffline(true);
+      } catch {
+        setIsDbOffline(true);
+      }
+    };
+    checkDb();
   }, []);
 
   useEffect(() => {
