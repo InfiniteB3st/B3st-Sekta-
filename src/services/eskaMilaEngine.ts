@@ -8,12 +8,14 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
     const session = await supabase.auth.getSession();
     const addons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
     const history = JSON.parse(localStorage.getItem('sekta_history') || '[]');
+    const errors = (window as any)._sekta_errors || [];
 
     const enrichedState = {
       ...diagnosticData,
       auth: session.data.session ? `ACTIVE_SESSION_${session.data.session.user.id}` : 'UNAUTHORIZED_HANDSHAKE_LOCKED',
       local_addons_count: addons.length,
       history_nodes: history.length,
+      recent_system_errors: errors.slice(-5),
       browser: navigator.userAgent,
       timestamp: new Date().toISOString()
     };

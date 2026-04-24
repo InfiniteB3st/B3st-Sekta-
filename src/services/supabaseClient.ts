@@ -25,6 +25,8 @@ const getEnv = (key: string) => {
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
+console.log("Kernel: Handshake initialized with signature", SB_KEY.slice(0, 5));
+
 // MASTER CLIENT PROVISIONING
 export const supabase = createClient(SB_URL, SB_KEY, {
   global: { 

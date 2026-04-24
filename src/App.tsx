@@ -103,6 +103,18 @@ function AppContent() {
   const isAdmin = user?.email === 'wambuamaxwell696@gmail.com';
 
   useEffect(() => {
+    // CAPTURE SYSTEM ERRORS
+    const originalError = console.error;
+    (window as any)._sekta_errors = [];
+    console.error = (...args: any[]) => {
+      (window as any)._sekta_errors.push({
+        msg: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '),
+        time: new Date().toISOString()
+      });
+      if ((window as any)._sekta_errors.length > 50) (window as any)._sekta_errors.shift();
+      originalError.apply(console, args);
+    };
+
     // Inject global styles to ensure Branding consistency
     const style = document.createElement('style');
     style.innerHTML = `
@@ -140,6 +152,14 @@ function AppContent() {
     };
 
     checkDb();
+
+    // UNIVERSAL DIAGNOSTIC HOTKEY: Ctrl + Shift + Z (Enabled for debugging)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
+        setShowDiagnostics(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     // Listen for Auth Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -243,7 +263,7 @@ function AppContent() {
         </Gatekeeper>
       </MasterGuard>
       <Suspense fallback={null}>
-        {isAdmin && <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />}
+        <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
       </Suspense>
     </Router>
   );
