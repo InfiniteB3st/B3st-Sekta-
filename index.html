@@ -3,7 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>B3st Sekta</title>
+    <!-- KERNEL EMERGENCY PROTOCOL: Restores control if React crashes -->
+    <script>
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift') {
+          let diag = document.getElementById('emergency-diag');
+          if (!diag) {
+            diag = document.createElement('div');
+            diag.id = 'emergency-diag';
+            diag.style.cssText = 'fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); z-index: 999999; padding: 40px; color: #ffb100; font-family: monospace; overflow: auto; display: block;';
+            diag.innerHTML = \`
+              <h1 style="font-size: 32px; font-weight: 900; font-style: italic; text-transform: uppercase;">Kernel Emergency Interface</h1>
+              <p style="font-size: 10px; color: #666; margin-bottom: 20px;">SAFE_MODE_ENABLED // RECOVERY_PROMPT_ACTIVE</p>
+              <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="color: white; font-size: 12px; text-transform: uppercase;">System Logs (Live)</h3>
+                <pre style="font-size: 10px; opacity: 0.8;">\${(window._sekta_errors || []).map(e => \`[\${e.time}] \${e.msg}\`).join('\\n') || "No fatal errors intercepted yet."}</pre>
+              </div>
+              <div style="display: flex; gap: 20px;">
+                <button onclick="window.location.reload()" style="background: #ffb100; color: black; border: none; padding: 15px 30px; font-weight: 900; border-radius: 8px; cursor: pointer;">REBOOT KERNEL</button>
+                <button onclick="localStorage.clear(); window.location.reload();" style="background: #333; color: #ccc; border: none; padding: 15px 30px; font-weight: 900; border-radius: 8px; cursor: pointer;">FLUSH CACHE</button>
+                <button onclick="document.getElementById('emergency-diag').remove()" style="background: transparent; color: white; border: 1px solid #333; padding: 15px 30px; font-weight: 900; border-radius: 8px; cursor: pointer;">CLOSE SHELL</button>
+              </div>
+              <div style="margin-top: 40px; border-top: 1px solid #222; padding-top: 20px;">
+                 <p style="font-size: 10px; color: #444;">Eska Mila AI Presence: \${window.ESKA_MILA_ACTIVE ? "VERIFIED" : "SIGNAL_LOST"}</p>
+                 <p style="font-size: 10px; color: #444;">Handshake State: \${window.HANDSHAKE_ERROR ? "FRACTURED" : "SYNCED"}</p>
+              </div>
+            \`;
+            document.body.appendChild(diag);
+          } else {
+            diag.style.display = diag.style.display === 'none' ? 'block' : 'none';
+          }
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

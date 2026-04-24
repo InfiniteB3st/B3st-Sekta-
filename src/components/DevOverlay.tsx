@@ -75,40 +75,48 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
       <div className="fixed inset-0 bg-black/98 z-[99999] p-8 md:p-16 font-mono selection:bg-primary/30 animate-in fade-in duration-500 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-12">
           
+          {/* ESKA MILA CORE AWAKENING - FRONT AND CENTER */}
+          {!showEskaMila && (
+            <div className="flex justify-center pt-20">
+               <button 
+                  onClick={() => setShowEskaMila(true)}
+                  className="group relative bg-[#0a0a0a] border-2 border-primary/20 p-16 rounded-[4rem] flex flex-col items-center gap-8 hover:border-primary transition-all duration-700 shadow-[0_0_80px_rgba(255,177,0,0.1)] hover:shadow-[0_0_120px_rgba(255,177,0,0.2)]"
+               >
+                  <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full animate-pulse group-hover:bg-primary/10" />
+                  <Sparkles size={80} className="text-primary group-hover:scale-125 transition-transform duration-700" />
+                  <div className="text-center space-y-2 relative">
+                     <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white">Awaken <span className="text-primary">Eska Mila</span></h2>
+                     <p className="text-[10px] font-black uppercase tracking-[0.8em] text-gray-600 italic">Initiate Synaptic Handshake</p>
+                  </div>
+               </button>
+            </div>
+          )}
+
           {/* HEADER BLOCK */}
           <div className="flex justify-between items-start border-b border-white/5 pb-10">
             <div className="space-y-4">
               <h2 className="text-primary text-4xl font-black italic uppercase tracking-tighter flex items-center gap-6">
-                <Zap className="text-primary animate-pulse" size={40} /> 
-                Advanced <span className="text-white">Diagnostics</span>
+                <Shield className="text-primary animate-pulse" size={40} /> 
+                System <span className="text-white">Kernel</span>
               </h2>
               <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 italic">
-                 <span>Kernel v4.2.0-STRIKE</span>
+                 <span>Architect Access Enabled</span>
                  <span className="w-2 h-2 bg-primary rounded-full" />
-                 <span className="text-primary">Direct Handshake Active</span>
+                 <span className="text-primary">All Handshakes Transparent</span>
               </div>
             </div>
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setShowEskaMila(true)}
-                className="px-8 py-4 bg-primary text-black rounded-full font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,177,0,0.3)]"
-              >
-                <Sparkles size={16} />
-                Awaken Eska Mila
-              </button>
-              <button onClick={onClose} className="w-16 h-16 bg-white/5 hover:bg-red-500/20 border border-white/10 rounded-full flex items-center justify-center text-white transition-all transform hover:rotate-90">
-                <X size={32} />
-              </button>
-            </div>
+            <button onClick={onClose} className="w-16 h-16 bg-white/5 hover:bg-red-500/20 border border-white/10 rounded-full flex items-center justify-center text-white transition-all transform hover:rotate-90">
+              <X size={32} />
+            </button>
           </div>
 
           {/* METRICS HUD */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
              <MetricBox label="Link Latency" value={networkLatency !== null ? `${networkLatency}ms` : 'PROBING...'} status={networkLatency && networkLatency < 200 ? 'success' : 'warning'} />
-             <MetricBox label="DB Handshake" value={handshake.prefix + "..."} status="success" />
-             <MetricBox label="Active Nodes" value={String(addons.length)} status={addons.length > 0 ? 'success' : 'idle'} />
-             <MetricBox label="Vercel Origin" value={window.location.host.includes('vercel') ? 'VERCEL' : 'LOCAL'} status="success" />
-             <MetricBox label="Secure Tunnel" value="ENCRYPTED" status="success" />
+             <MetricBox label="DB Handshake" value={handshake.prefix + "..."} status={(window as any).HANDSHAKE_ERROR ? 'warning' : 'success'} />
+             <MetricBox label="Auth_Status" value={user ? 'VERIFIED' : 'GUEST'} status={user ? 'success' : 'idle'} />
+             <MetricBox label="Key_Integrity" value={handshake.prefix.length > 0 ? "STABLE" : "FRACTURED"} status={handshake.prefix.length > 0 ? 'success' : 'warning'} />
+             <MetricBox label="Vercel Nodes" value={window.location.host.includes('vercel') ? 'ACTIVE' : 'LOCAL'} status="success" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

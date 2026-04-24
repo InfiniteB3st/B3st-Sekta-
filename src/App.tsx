@@ -50,8 +50,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   render() {
-    if (this.state.hasError) {
-      const isAuthError = this.state.error?.message?.includes('supabase') || this.state.error?.message?.includes('auth');
+    if (this.state.hasError || (window as any).HANDSHAKE_ERROR) {
+      const isAuthError = this.state.error?.message?.includes('supabase') || this.state.error?.message?.includes('auth') || (window as any).HANDSHAKE_ERROR;
       
       return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-12 text-center space-y-8">
@@ -64,11 +64,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             </h1>
             <p className="text-gray-500 font-bold uppercase tracking-widest text-[11px] max-w-md mx-auto">
               {isAuthError 
-                ? "RECOVERY MODE: The B3st Sekta kernel failed to verify the Supabase identity token."
+                ? "RECOVERY MODE: The B3st Sekta kernel failed to verify the database signature. Press SHIFT for emergency logs."
                 : "The B3st Sekta kernel encountered a memory isolation failure or routing leak."}
             </p>
             <div className="bg-white/5 p-4 rounded-xl border border-white/5 font-mono text-[9px] text-red-400 overflow-auto max-w-2xl">
-              ERROR_CODE: {String(this.state.error?.message || "KERNEL_PANIC")}
+              ERROR_CODE: {(window as any).HANDSHAKE_ERROR ? "HANDSHAKE_401_INVALID_KEY" : String(this.state.error?.message || "KERNEL_PANIC")}
             </div>
           </div>
           <div className="flex gap-4">

@@ -11,25 +11,33 @@ let _supabase: any = null;
  */
 export const getSupabase = () => {
   if (!_supabase) {
-    if (!SB_KEY || SB_KEY.includes('REPLACE')) {
-      console.error("KERNEL CRITICAL: API KEY NOT FOUND.");
+    try {
+      if (!SB_KEY || SB_KEY.includes('REPLACE')) {
+        console.error("KERNEL CRITICAL: API KEY NOT FOUND.");
+        (window as any).HANDSHAKE_ERROR = true;
+        return null;
+      }
+      _supabase = createClient(SB_URL, SB_KEY, {
+        global: { 
+          headers: { 
+            'apikey': SB_KEY,
+            'Authorization': `Bearer ${SB_KEY}`
+          } 
+        },
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          flowType: 'pkce'
+        }
+      });
+      console.log("Kernel: Handshake established with signature", SB_KEY.slice(0, 5));
+      (window as any).HANDSHAKE_ERROR = false;
+    } catch (err) {
+      console.error("KERNEL HANDSHAKE FRACTURED:", err);
+      (window as any).HANDSHAKE_ERROR = true;
       return null;
     }
-    _supabase = createClient(SB_URL, SB_KEY, {
-      global: { 
-        headers: { 
-          'apikey': SB_KEY,
-          'Authorization': `Bearer ${SB_KEY}`
-        } 
-      },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: 'pkce'
-      }
-    });
-    console.log("Kernel: Handshake established with signature", SB_KEY.slice(0, 5));
   }
   return _supabase;
 };
@@ -38,7 +46,21 @@ export const getSupabase = () => {
 export const supabase = new Proxy({} as any, {
   get: (target, prop) => {
     const client = getSupabase();
-    if (!client) return null;
+    if (!client) {
+      // Return a safe dummy object to prevent top-level crashes
+      if (prop === 'auth') return { 
+        getSession: async () => ({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signInWithOAuth: async () => ({ error: { message: 'Database Offline' } }),
+        signOut: async () => {} 
+      };
+      if (prop === 'from') return () => ({ 
+        select: () => ({ order: () => ({ limit: () => ({ single: () => ({ data: null, error: null }), maybeSingle: () => ({ data: null, error: null }) }) }), limit: () => ({ single: () => ({ data: null, error: null }) }) }),
+        upsert: async () => ({ error: { message: 'Database Offline' } }),
+        update: () => ({ eq: () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }) })
+      });
+      return null;
+    }
     return client[prop];
   }
 });
