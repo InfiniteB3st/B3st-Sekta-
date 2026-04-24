@@ -15,6 +15,7 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
   const [addonStatus, setAddonStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
   const [sessionData, setSessionData] = useState<any>(null);
   const [permissionStatus, setPermissionStatus] = useState<'IDLE' | 'OK' | 'DENIED'>('IDLE');
+  const [probeResult, setProbeResult] = useState<string | null>(null);
 
   const handshake = getKeyHandshake();
 
@@ -56,6 +57,27 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
     } catch (err: any) {
       setPermissionStatus('DENIED');
       setDbStatus('ERROR');
+    }
+
+    // 4. Real-Time Table Probe (Debug Log)
+    try {
+      const { error } = await (supabase as any)
+        .from('debug_log')
+        .insert([{ 
+          component: 'DevOverlay', 
+          message: 'Handshake Integrity Check', 
+          timestamp: new Date().toISOString(),
+          origin: window.location.origin
+        }]);
+      
+      if (error) {
+        if (error.code === '42P01') setProbeResult('TABLE_NOT_FOUND (Expected if no debug_log table)');
+        else setProbeResult(`PROBE_FAILURE: ${error.message} (${error.code})`);
+      } else {
+        setProbeResult('OK: WRITE_COMMITTED');
+      }
+    } catch (err: any) {
+      setProbeResult(`PROBE_EXCEPTION: ${err.message}`);
     }
   };
 
@@ -164,6 +186,7 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
                 <EnvRow label="IDENTITIES" value={user?.identities?.map((id: any) => id.provider).join(', ') || 'NONE'} />
                 <EnvRow label="PERMISSION_AUDIT" value={permissionStatus} />
                 <EnvRow label="AUTH_METHOD" value={user?.app_metadata?.provider || 'EMAIL/PASS'} />
+                <EnvRow label="CORS_ORIGIN" value={window.location.origin} />
              </div>
           </div>
 
@@ -173,7 +196,7 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
               </h3>
               <div className="space-y-4">
                  <EnvRow label="KEY_SIGNATURE" value={handshake.prefix + "..." + handshake.suffix} />
-                 <EnvRow label="KEY_SOURCE" value="HARD-CODED (PRIMARY)" />
+                 <EnvRow label="WRITE_PROBE" value={probeResult || 'IDLE'} />
                  <EnvRow label="SESSION_VALID" value={sessionData ? 'YES' : 'NO'} />
               </div>
            </div>

@@ -18,7 +18,8 @@ export default function LandingPage() {
     const fetchHero = async () => {
       try {
         if (user && supabase) {
-          const { data: history, error } = await supabase
+          // 1. Check history for returning user
+          const { data: history } = await (supabase as any)
             .from('watch_history')
             .select('anime_id')
             .eq('user_id', user.id)
@@ -31,32 +32,26 @@ export default function LandingPage() {
             setHeroAnime(anime);
             setIsNewUser(false);
             
-            // Update Favicon to last watched anime or high quality fallback
+            // Sync Favicon
             const favicon = document.querySelector('link[rel="icon"]');
-            if (favicon) {
-              (favicon as any).href = anime.images.webp.large_image_url;
-            }
+            if (favicon) (favicon as any).href = anime.images.webp.large_image_url;
           } else {
-            // Default high-quality fallback: Solo Leveling or similar trending
+            // New user with high quality default (Solo Leveling 1080p)
             const anime = await jikanService.getAnimeById(52299); 
             setHeroAnime(anime);
-            
+            setIsNewUser(true);
             const favicon = document.querySelector('link[rel="icon"]');
-            if (favicon) {
-              (favicon as any).href = anime.images.webp.large_image_url;
-            }
+            if (favicon) (favicon as any).href = anime.images.webp.large_image_url;
           }
         } else {
-          // Public Default: Random High Quality Anime
-          const randomIds = [52299, 5114, 11061, 38524]; // Solo Leveling, FMAB, Hunter x Hunter, Attack on Titan
+          // Random High Quality Discovery for non-logged in
+          const randomIds = [52299, 5114, 11061, 38524, 40028]; // Trending / Classic Mix
           const randomId = randomIds[Math.floor(Math.random() * randomIds.length)];
           const anime = await jikanService.getAnimeById(randomId);
           setHeroAnime(anime);
 
           const favicon = document.querySelector('link[rel="icon"]');
-          if (favicon) {
-            (favicon as any).href = anime.images.webp.large_image_url;
-          }
+          if (favicon) (favicon as any).href = anime.images.webp.large_image_url;
         }
       } catch (err) {
         console.error('Landing Discovery Failure:', err);

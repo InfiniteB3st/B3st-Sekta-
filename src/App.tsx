@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import Gatekeeper from './components/Gatekeeper';
 import Home from './pages/Home';
+import LandingPage from './pages/LandingPage';
 import Filter from './pages/Filter';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -82,6 +83,9 @@ export default function App() {
             <Gatekeeper>
               <Layout>
                 <Routes>
+                  {/* Public Entry */}
+                  <Route path="/" element={<LandingPage />} />
+                  
                   {/* Public Core */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/auth" element={<Navigate to="/login" replace />} />

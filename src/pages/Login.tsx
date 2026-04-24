@@ -23,26 +23,29 @@ export default function Login() {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({ 
+        const { data, error: signupError } = await supabase.auth.signUp({ 
           email, 
           password,
           options: { 
             emailRedirectTo: PRODUCTION_URL,
-            data: { username } // Store in metadata too for easy access
+            data: { username: username.toLowerCase().replace(/\s/g, '') }
           } 
         });
-        if (error) throw error;
+        if (signupError) throw signupError;
         
-        // Manual profile provision start if needed, but usually we do it on sync
+        // IMMEDIATE PROFILE PROVISIONING
         if (data.user) {
-          await supabase.from('profiles').upsert({
+          const { error: profileError } = await (supabase as any).from('profiles').upsert({
             id: data.user.id,
             username: username.toLowerCase().replace(/\s/g, ''),
             email: email,
+            avatar_url: 'https://i.imgur.com/Heuy9Y8.png',
+            accent_color: '#ffb100',
             updated_at: new Date().toISOString()
-          });
+          }, { onConflict: 'id' });
+          if (profileError) console.error('Immediate Profile Provisioning failed:', profileError);
         }
-        setError("Verification link dispatched to your node (email).");
+        setError("Account initialized. Check your email for verification.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

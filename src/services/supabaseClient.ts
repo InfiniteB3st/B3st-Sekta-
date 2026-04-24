@@ -22,45 +22,26 @@ const getEnv = (key: string) => {
 // CRITICAL: Hard-coded Primary Sources for rock-solid deployment stability.
 // DO NOT MODIFY THESE UNLESS THE PROJECT ENDPOINT CHANGES.
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+const SB_KEY = getEnv('SUPABASE_ANON_KEY') || getEnv('VITE_SUPABASE_ANON_KEY') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
-export const getKeyHandshake = () => ({
-  prefix: SB_KEY.substring(0, 5),
-  suffix: SB_KEY.substring(SB_KEY.length - 5)
+// MASTER CLIENT PROVISIONING (Template Required)
+export const supabase = createClient(SB_URL, SB_KEY, {
+  global: { headers: { 'apikey': SB_KEY } },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  }
 });
 
 // Detection for Diagnostic Overlay
 export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Primary Source";
 
-// Singleton Instance Holder
-let instance: ReturnType<typeof createClient> | null = null;
-
-/**
- * Get the hardened Supabase Client instance.
- * Ensures the handshake is always performed with forced headers.
- */
-export const getSupabase = (): any => {
-  if (!instance) {
-    instance = createClient(SB_URL, SB_KEY, {
-      global: { 
-        headers: { 
-          'apikey': SB_KEY,
-          'Authorization': `Bearer ${SB_KEY}`
-        }
-      },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: 'pkce'
-      }
-    });
-  }
-  return instance;
-};
-
-// EXPORT THE MASTER CLIENT
-export const supabase = getSupabase();
+export const getKeyHandshake = () => ({
+  prefix: SB_KEY.substring(0, 5),
+  suffix: SB_KEY.substring(SB_KEY.length - 5)
+});
 
 /**
  * IDENTITY MANAGEMENT FUNCTIONS
