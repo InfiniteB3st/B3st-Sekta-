@@ -49,7 +49,8 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      // Changed to Z as emergency bypass
+      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
         setShowDiagnostics(prev => !prev);
       }
     };
@@ -94,9 +95,15 @@ export default function App() {
               </Layout>
             </Gatekeeper>
           </MasterGuard>
-          <DevOverlay isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
+          <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
         </Router>
       </AuthProvider>
     </ThemeProvider>
   );
+}
+
+function DiagnosticWrapper({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  // EMERGENCY BYPASS: Allow trigger for all users to debug handshake issues
+  if (!isOpen) return null;
+  return <DevOverlay isOpen={isOpen} onClose={onClose} />;
 }

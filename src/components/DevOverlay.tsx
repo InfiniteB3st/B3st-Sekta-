@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { supabase, envSource } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Database, Layout, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
@@ -15,24 +15,28 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
   const [addonStatus, setAddonStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
   const [sessionData, setSessionData] = useState<any>(null);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL ? 'CONFIGURED' : 'MISSING';
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY ? 'CONFIGURED' : 'MISSING';
+  const supabaseUrlState = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL ? 'RESOLVED' : 'FALLBACK_ACTIVE';
+  const anonKeyState = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY ? 'RESOLVED' : 'FALLBACK_ACTIVE';
 
   const runTests = async () => {
-    // 1. Session Check
+    // 1. Session Check (Detailed)
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
-      setSessionData(data.session);
+      setSessionData(data); // Store the whole response including user/session
     } catch (err: any) {
       setDbError(`SESSION_FETCH_ERROR: ${err.message}`);
     }
 
-    // 2. Handshake Check
+    // 2. Handshake Check (Live Ping)
     try {
-      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
-      if (error) throw error;
-      setDbStatus('OK');
+      const { data, error } = await supabase.from('profiles').select('id').limit(1);
+      if (error) {
+        setDbStatus('ERROR');
+        setDbError(`LIVE_DB_PING_FAILED [profiles]: ${error.message} (Code: ${error.code})`);
+      } else {
+        setDbStatus('OK');
+      }
     } catch (err: any) {
       setDbStatus('ERROR');
       setDbError(err.message || 'Unknown DB Handshake Error');
@@ -42,12 +46,15 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
   const checkAddons = async () => {
     setAddonStatus('IDLE');
     try {
-      const { error } = await supabase.from('user_addons').select('count', { count: 'exact', head: true });
-      if (error && error.code !== 'PGRST116') { 
+      console.log("DIAGNOSTIC: Probing user_addons table...");
+      const { data, error } = await supabase.from('user_addons').select('*').limit(1);
+      
+      if (error) {
          setAddonStatus('ERROR');
-         setDbError(`ADDON_ACCESS_DENIED: ${error.message}`);
+         setDbError(`TABLE_PROBE_FAILED [user_addons]: ${error.message} (Code: ${error.code})`);
       } else {
          setAddonStatus('OK');
+         console.log("DIAGNOSTIC: table reachable, data sample:", data);
       }
     } catch (err: any) {
       setAddonStatus('ERROR');
@@ -91,9 +98,9 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
           />
           <MetricCard 
             label="Infrastructures" 
-            value={anonKey ? 'CONFIGURED' : 'UNSET'} 
-            status={anonKey ? 'success' : 'error'} 
-            sub={supabaseUrl ? 'URL_RESOLVED' : 'URL_MISSING'}
+            value={anonKeyState === 'RESOLVED' ? 'CONFIGURED' : 'FALLBACK'} 
+            status={anonKeyState === 'RESOLVED' ? 'success' : 'idle'} 
+            sub={supabaseUrlState === 'RESOLVED' ? 'URL_RESOLVED' : 'URL_FALLBACK'}
           />
           <MetricCard 
             label="Addon Registry" 
@@ -126,8 +133,8 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
                 <Database size={18} className="text-[#ffb100]" /> Environment Integrity
               </h3>
               <div className="space-y-4">
-                 <EnvRow label="VITE_SUPABASE_URL" value={supabaseUrl} />
-                 <EnvRow label="VITE_SUPABASE_ANON_KEY" value={anonKey ? '********************' : 'UNDEFINED'} />
+                 <EnvRow label="DETECTION_SOURCE" value={envSource} />
+                 <EnvRow label="VITE_SUPABASE_URL_STATE" value={supabaseUrlState} />
                  <EnvRow label="NODE_ENV" value={import.meta.env.MODE} />
               </div>
            </div>
@@ -137,28 +144,42 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
                 <Layout size={18} className="text-[#ffb100]" /> Redirect Blueprints
               </h3>
               <div className="space-y-4">
-                 <EnvRow label="Origin" value={window.location.origin} />
+                 <EnvRow label="Origin (CORS)" value={window.location.origin} />
                  <EnvRow label="Redirect Target" value={`${window.location.origin}/home`} />
                  <EnvRow label="User ID" value={user?.id || 'null'} />
               </div>
            </div>
         </div>
 
-        {/* LOGS */}
-        <div className="bg-red-500/5 p-8 rounded-[2.5rem] border border-red-500/10">
-          <div className="flex items-center gap-4 mb-4">
-             <AlertTriangle className="text-red-500" size={20} />
-             <h3 className="text-red-500 font-black uppercase">Incident Report / Last Sync Failure</h3>
+        {/* LOGS & JSON BLOB */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-red-500/5 p-8 rounded-[2.5rem] border border-red-500/10">
+            <div className="flex items-center gap-4 mb-4">
+               <AlertTriangle className="text-red-500" size={20} />
+               <h3 className="text-red-500 font-black uppercase">Incident Report / Last Sync Failure</h3>
+            </div>
+            <div className="bg-black/40 p-6 rounded-xl border border-white/5">
+               <pre className="text-red-400 text-[10px] whitespace-pre-wrap leading-relaxed italic">
+                 {dbError ? `[FATAL] ${dbError}` : '[OK] System reports zero critical handshake disruptions in the last 60s.'}
+               </pre>
+            </div>
           </div>
-          <div className="bg-black/40 p-6 rounded-xl border border-white/5">
-             <pre className="text-red-400 text-[10px] whitespace-pre-wrap leading-relaxed italic">
-               {dbError ? `[FATAL] ${dbError}` : '[OK] System reports zero critical handshake disruptions in the last 60s.'}
-             </pre>
+
+          <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/5">
+            <div className="flex items-center gap-4 mb-4">
+               <Shield className="text-[#ffb100]" size={20} />
+               <h3 className="text-white font-black uppercase">Auth Session Context (RAW)</h3>
+            </div>
+            <div className="bg-black/40 p-6 rounded-xl border border-white/5 h-[300px] overflow-auto">
+               <pre className="text-blue-400 text-[9px] whitespace-pre-wrap leading-relaxed">
+                 {sessionData ? JSON.stringify(sessionData, null, 2) : 'No active session node detected.'}
+               </pre>
+            </div>
           </div>
         </div>
 
         <div className="text-center text-gray-700 text-[9px] font-bold uppercase tracking-[0.5em] pt-10 border-t border-white/5">
-           B3ST SEKTA PRE-FLIGHT DIAGNOSTICS // USE CTRL + SHIFT + D TO EXIT
+           B3ST SEKTA PRE-FLIGHT DIAGNOSTICS // USE CTRL + SHIFT + Z TO EXIT
         </div>
       </div>
     </div>
