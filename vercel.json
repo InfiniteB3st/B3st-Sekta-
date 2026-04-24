@@ -1,6 +1,9 @@
 {
   "version": 2,
   "name": "best-sekta",
+  "framework": "vite",
   "cleanUrls": true,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
