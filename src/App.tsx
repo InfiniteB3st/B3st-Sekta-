@@ -133,14 +133,30 @@ function AppContent() {
   useEffect(() => {
     console.log("Kernel: Pre-flight sequence initiated...");
     
-    // UNIVERSAL DIAGNOSTIC HOTKEY: Ctrl + Shift + Z (Enabled for debugging)
+    // MASTER KEY SHORTCUT: Shift + Q + T
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
-        console.log("Kernel: Manual Diagnostic Interface Overridden.");
+      if (e.shiftKey && e.key.toUpperCase() === 'Q' && (window as any)._q_pressed === undefined) {
+        (window as any)._q_pressed = true;
+      }
+      
+      const isShiftQT = e.shiftKey && 
+                        (e.key.toUpperCase() === 'T') && 
+                        (window as any)._q_pressed;
+
+      if (isShiftQT) {
+        console.log("Kernel: Master Key Accepted. Diagnosis Interface Overridden.");
         setShowDiagnostics(prev => !prev);
       }
     };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key.toUpperCase() === 'Q') {
+        (window as any)._q_pressed = false;
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
     // CAPTURE SYSTEM ERRORS
     const originalError = console.error;

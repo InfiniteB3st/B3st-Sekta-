@@ -3,7 +3,7 @@ import { X, Send, Bot, Terminal, Zap, ShieldAlert, Sparkles, MessageSquare, Plus
 import { getEskaMilaResponse } from '../services/eskaMilaEngine';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../services/supabaseClient';
+import { getSupabase } from '../services/supabaseClient';
 
 interface Message {
   role: 'user' | 'bot';
@@ -25,14 +25,16 @@ interface EskaMilaBotProps {
 }
 
 const getSystemSnapshot = async () => {
-  const session = await supabase.auth.getSession();
+  const supabaseClient = getSupabase();
+  const session = await supabaseClient?.auth.getSession();
   const addons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
+  const errors = (window as any)._sekta_errors || [];
   
-  // Capture some recent logs if we had a global tracker, for now we simulate snapshot
   return {
-    auth_status: session.data.session ? 'ACTIVE_HANDSHAKE' : 'LOCKED_BYPASS',
-    user_id: session.data.session?.user?.id || 'ANONYMOUS',
+    auth_status: session?.data?.session ? 'ACTIVE_HANDSHAKE' : 'LOCKED_BYPASS',
+    user_id: session?.data?.session?.user?.id || 'ANONYMOUS',
     addon_count: addons.length,
+    recent_errors: errors.slice(-5),
     viewport: `${window.innerWidth}x${window.innerHeight}`,
     url: window.location.href,
     timestamp: new Date().toISOString()

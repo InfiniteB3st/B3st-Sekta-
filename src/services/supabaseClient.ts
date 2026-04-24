@@ -6,7 +6,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let _supabase: any = null;
 
 /**
- * LAZY-INIT HANDSHAKE PROTOCOL
+ * SAFE-BOOT HANDSHAKE PROTOCOL
  * Prevents "API Key must be set" race conditions on entry.
  */
 export const getSupabase = () => {
