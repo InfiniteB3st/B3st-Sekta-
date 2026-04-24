@@ -23,13 +23,25 @@ import { AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
 
 const DevOverlay = lazy(() => import('./components/DevOverlay').then(module => ({ default: module.DevOverlay })));
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = {
+      hasError: false,
+      error: null
+    };
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
@@ -119,6 +131,17 @@ function AppContent() {
   const isAdmin = user?.email === 'wambuamaxwell696@gmail.com';
 
   useEffect(() => {
+    console.log("Kernel: Pre-flight sequence initiated...");
+    
+    // UNIVERSAL DIAGNOSTIC HOTKEY: Ctrl + Shift + Z (Enabled for debugging)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
+        console.log("Kernel: Manual Diagnostic Interface Overridden.");
+        setShowDiagnostics(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     // CAPTURE SYSTEM ERRORS
     const originalError = console.error;
     (window as any)._sekta_errors = [];
@@ -169,14 +192,6 @@ function AppContent() {
 
     checkDb();
 
-    // UNIVERSAL DIAGNOSTIC HOTKEY: Ctrl + Shift + Z (Enabled for debugging)
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
-        setShowDiagnostics(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
     // Listen for Auth Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
        console.log(`AUTH_EVENT: ${event}`, session?.user?.id);
@@ -225,9 +240,9 @@ function AppContent() {
           <Database size={64} />
         </div>
         <div className="space-y-4">
-          <h1 className="text-4xl font-black italic text-white uppercase tracking-tighter">System Maintenance: Connection Lost</h1>
+          <h1 className="text-4xl font-black italic text-white uppercase tracking-tighter">Eska Mila: Connection Lost</h1>
           <p className="text-gray-500 max-w-sm font-black uppercase tracking-[0.2em] text-[10px] leading-relaxed">
-            The database node has rejected the handshake. Please check your Supabase API credentials in services/supabaseClient.ts.
+            The database node has rejected the handshake. Eska Mila suggests verifying your Supabase API credentials.
           </p>
         </div>
         <div className="flex gap-4">

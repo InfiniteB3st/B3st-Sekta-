@@ -1,28 +1,45 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3ODU4MzIsImV4cCI6MjA5MjM2MTgzMn0.Z-WM1XtqO2CNPB9qmi0ivswAE-MVE8tBrrpqX1i5rRE";
 
-if (!SB_KEY || SB_KEY.includes('REPLACE')) {
-  console.error("KERNEL CRITICAL: Supabase API Key is invalid or missing. System entering Limited Mode.");
-} else {
-  console.log("Kernel: Handshake initialized with signature", SB_KEY.slice(0, 5));
-}
+let _supabase: any = null;
 
-// MASTER CLIENT PROVISIONING: NUCLEAR HANDSHAKE
-// Direct string injection to bypass Vercel environment resolution latency
-export const supabase = createClient(SB_URL, SB_KEY, {
-  global: { 
-    headers: { 
-      'apikey': SB_KEY,
-      'Authorization': `Bearer ${SB_KEY}`
-    } 
-  },
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
+/**
+ * LAZY-INIT HANDSHAKE PROTOCOL
+ * Prevents "API Key must be set" race conditions on entry.
+ */
+export const getSupabase = () => {
+  if (!_supabase) {
+    if (!SB_KEY || SB_KEY.includes('REPLACE')) {
+      console.error("KERNEL CRITICAL: API KEY NOT FOUND.");
+      return null;
+    }
+    _supabase = createClient(SB_URL, SB_KEY, {
+      global: { 
+        headers: { 
+          'apikey': SB_KEY,
+          'Authorization': `Bearer ${SB_KEY}`
+        } 
+      },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
+      }
+    });
+    console.log("Kernel: Handshake established with signature", SB_KEY.slice(0, 5));
+  }
+  return _supabase;
+};
+
+// PROXY EXPORT: Maintain compatibility while supporting Lazy Init
+export const supabase = new Proxy({} as any, {
+  get: (target, prop) => {
+    const client = getSupabase();
+    if (!client) return null;
+    return client[prop];
   }
 });
 

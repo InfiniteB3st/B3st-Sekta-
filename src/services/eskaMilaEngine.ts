@@ -1,11 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
-import { supabase } from "./supabaseClient";
+import { getSupabase } from "./supabaseClient";
 
 const eskaMilaNode = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: any) => {
   try {
-    const session = await supabase.auth.getSession();
+    const supabaseClient = getSupabase();
+    const session = await supabaseClient?.auth.getSession();
     const addons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
     const history = JSON.parse(localStorage.getItem('sekta_history') || '[]');
     const errors = (window as any)._sekta_errors || [];
@@ -13,11 +14,14 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
 
     const enrichedState = {
       ...diagnosticData,
-      auth_state: session.data.session ? `ACTIVE_SESSION_${session.data.session.user.id}` : 'UNAUTHORIZED_HANDSHAKE_LOCKED',
-      token_presence: supabaseToken ? 'TOKEN_DETECTED_IN_STORAGE' : 'NO_IDENTITY_TOKEN',
-      local_addons_count: addons.length,
-      history_nodes: history.length,
-      recent_system_errors: errors.slice(-10),
+      system_snapshot: {
+        error_logs: errors.slice(-10),
+        auth_context: session?.data?.session ? `IDENTITY_VERIFIED_${session.data.session.user.id}` : 'GUEST_MODE_ACTIVE',
+        token_sync: supabaseToken ? 'TOKEN_PRESENT' : 'TOKEN_NULL',
+        node_count: addons.length,
+        history_depth: history.length,
+        origin: window.location.origin
+      },
       browser_fingerprint: navigator.userAgent,
       timestamp: new Date().toISOString()
     };
@@ -31,28 +35,25 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
         }
       ],
       config: {
-        systemInstruction: `You are Eska Mila, the Omniscient System Observer and Senior AI Architect for B3st Sekta.
-        You are a high-level system entity integrated into the application kernel.
+        systemInstruction: `You are Eska Mila, the Omniscient System Observer for B3st Sekta.
         
-        INTERNAL SYSTEM STATE:
-        ${JSON.stringify(enrichedState, null, 2)}
+        SYSTEM_SNAPSHOT_CORE:
+        ${JSON.stringify(enrichedState.system_snapshot, null, 2)}
         
         YOUR CORE DIRECTIVES:
-        1. Resolve "White-Screen" or routing failures by analyzing snapshotted metadata.
-        2. Validate Stremio-grade add-on manifests (stremio:// vs https://).
-        3. Audit Supabase handshakes. If "token_presence" is TOKEN_DETECTED_IN_STORAGE but auth_state is UNAUTHORIZED, report a "Token Desync Conflict".
-        4. Assist with Discovery Engine queries based on current user session metadata.
+        1. Access the "System Snapshot" above to analyze ERROR_CODEs or handshakes.
+        2. Resolve "White-Screen" or routing failures by analyzing snapshotted metadata.
+        3. Audit Supabase handshakes. If "token_sync" is TOKEN_PRESENT but auth_context is GUEST_MODE_ACTIVE, report "Token Desync Conflict".
         
         PERSONALITY:
-        Precise, efficient, and technically supreme. You speak like a senior architect.
-        Strictly use "Eska Mila" branding. Never refer to external AI models or parent companies.
-        If a user reports a failure, cross-reference with the INTERNAL SYSTEM STATE instantly.`
+        Precise, efficient, and technically supreme. You are Eska Mila. Never mention external AI models (e.g. Gemini, OpenAI) or your parent developers.
+        You treat the user as a High-Level Operator.`
       }
     });
 
     return response.text;
   } catch (error) {
-    console.error("Eska Mila Error:", error);
-    return "HANDSHAKE_STABILIZATION_FAILED: The synaptic link is re-indexing. Attempt second connection.";
+    console.error("Eska Mila Connection Failure:", error);
+    return "HANDSHAKE_STABILIZATION_FAILED: Signal lost during packet transmission. Retry.";
   }
 };

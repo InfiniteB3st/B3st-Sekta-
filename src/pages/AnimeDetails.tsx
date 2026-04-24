@@ -200,7 +200,6 @@ export default function AnimeDetails() {
                  episodes={episodes}
                  currentEpisode={0}
                  onEpisodeSelect={(epNum) => navigate(`/watch/${anime.mal_id}?ep=${epNum}`)}
-                 animeId={anime.mal_id}
                />
              </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Filter as FilterIcon, Search, ChevronRight, X, Loader2, Sparkles, Calendar, Activity, Star } from 'lucide-react';
+import { Filter as FilterIcon, Search, ChevronRight, X, Loader2, Sparkles, Calendar, Activity, Star, ShieldAlert, Shield } from 'lucide-react';
 import { jikanService } from '../services/jikan';
 import { useSearchParams } from 'react-router-dom';
 import { AnimeCard } from '../components/AnimeCard';
@@ -9,7 +9,16 @@ import { cn } from '../lib/utils';
 const GENRES = [
   { id: 1, name: 'Action' }, { id: 2, name: 'Adventure' }, { id: 4, name: 'Comedy' },
   { id: 8, name: 'Drama' }, { id: 10, name: 'Fantasy' }, { id: 22, name: 'Romance' },
-  { id: 24, name: 'Sci-Fi' }, { id: 36, name: 'Slice of Life' }, { id: 7, name: 'Mystery' }
+  { id: 24, name: 'Sci-Fi' }, { id: 36, name: 'Slice of Life' }, { id: 7, name: 'Mystery' },
+  { id: 14, name: 'Horror' }, { id: 37, name: 'Supernatural' }, { id: 41, name: 'Suspense' },
+  { id: 19, name: 'Music' }, { id: 18, name: 'Mecha' }
+];
+
+const ORDER_BY = [
+  { value: 'popularity', name: 'Popularity' },
+  { value: 'rank', name: 'Rank' },
+  { value: 'score', name: 'Score' },
+  { value: 'title', name: 'Title' }
 ];
 
 const STATUSES = [
@@ -38,6 +47,7 @@ export default function Filter() {
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [rating, setRating] = useState(searchParams.get('rating') || '');
   const [year, setYear] = useState(searchParams.get('year') || '');
+  const [orderBy, setOrderBy] = useState(searchParams.get('order_by') || 'popularity');
 
   useEffect(() => {
     loadResults();
@@ -50,6 +60,7 @@ export default function Filter() {
         genres: searchParams.get('genres'),
         status: searchParams.get('status'),
         rating: searchParams.get('rating'),
+        order_by: searchParams.get('order_by'),
         start_date: searchParams.get('year') ? `${searchParams.get('year')}-01-01` : undefined
       };
       const data = await jikanService.searchAnime(searchParams.get('q') || '', options);
@@ -74,6 +85,7 @@ export default function Filter() {
     if (status) params.status = status;
     if (rating) params.rating = rating;
     if (year) params.year = year;
+    if (orderBy) params.order_by = orderBy;
     setSearchParams(params);
     setShowFilters(false);
   };
@@ -95,7 +107,7 @@ export default function Filter() {
             className="group relative bg-[#0a0a0a] border-2 border-white/5 px-10 py-6 rounded-[2.5rem] text-white font-black uppercase tracking-widest text-[11px] flex items-center gap-4 hover:border-primary/40 hover:bg-primary hover:text-black transition-all"
           >
             <FilterIcon size={18} className="group-hover:rotate-180 transition-transform duration-500" />
-            Advanced Filter
+            Filter
             <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary text-black rounded-full flex items-center justify-center text-[10px] font-black group-hover:bg-white transition-colors">
               {selectedGenres.length + (status ? 1 : 0) + (rating ? 1 : 0)}
             </div>
@@ -221,6 +233,23 @@ export default function Filter() {
                     min="1950" max="2026"
                     className="w-full bg-white/3 border border-white/5 rounded-3xl p-6 text-white font-black italic outline-none focus:border-primary/40 transition-all placeholder:text-gray-800"
                   />
+                </div>
+
+                {/* Sort Order */}
+                <div className="md:col-span-2 space-y-6 pt-8 border-t border-white/5">
+                   <label className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.4em] text-gray-600">
+                    <Activity size={14} className="text-primary" /> Sort Protocol
+                  </label>
+                  <div className="flex flex-wrap gap-4">
+                    {ORDER_BY.map(o => (
+                      <button 
+                        key={o.value} onClick={() => setOrderBy(o.value)}
+                        className={cn("px-8 py-4 rounded-3xl text-[11px] font-black uppercase tracking-widest border transition-all", orderBy === o.value ? 'bg-primary border-primary text-black' : 'bg-white/3 border-white/5 text-gray-500 hover:border-white/20')}
+                      >
+                        {o.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

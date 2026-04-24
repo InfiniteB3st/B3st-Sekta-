@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Mic, Subtitles, ChevronDown } from 'lucide-react';
+import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
 interface Episode {
@@ -63,13 +64,24 @@ export const EpisodeList: React.FC<EpisodeListProps> = ({ episodes, currentEpiso
             <button
               key={ep.mal_id}
               onClick={() => onEpisodeSelect(ep.mal_id)}
+              title={ep.title || `Episode ${ep.mal_id}`}
               className={cn(
-                "group relative p-4 rounded-xl border transition-all duration-300 text-left overflow-hidden flex items-center gap-6 w-full",
+                "group relative p-4 rounded-xl border transition-all duration-300 text-left overflow-visible flex items-center gap-6 w-full",
                 currentEpisode === ep.mal_id 
                   ? "bg-primary text-black border-primary shadow-[0_0_30px_rgba(255,177,0,0.3)] z-10"
                   : "bg-[#080808] border-white/5 hover:border-primary/30 text-white"
               )}
             >
+              {/* HOVER TOOLTIP PROJECTOR */}
+              <div className="absolute left-[-200px] top-1/2 -translate-y-1/2 w-44 bg-black/90 backdrop-blur-xl border border-white/10 p-4 rounded-xl opacity-0 translate-x-10 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500 pointer-events-none z-[100] hidden lg:block shadow-3xl">
+                 <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">Transmission Detail</p>
+                 <p className="text-[11px] font-bold text-white leading-tight italic line-clamp-3">{ep.title || 'No metadata found'}</p>
+                 <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+                    <span className="text-[8px] text-gray-500 flex items-center gap-1"><Subtitles size={8}/> AI SYNC</span>
+                    <span className="text-[8px] text-green-500 font-bold">READY</span>
+                 </div>
+              </div>
+
               <div className={cn(
                 "w-12 h-12 flex-shrink-0 rounded-lg flex items-center justify-center font-black italic text-xl border-2 transition-colors",
                 currentEpisode === ep.mal_id ? "bg-black/10 border-black/10" : "bg-black border-white/10 text-primary group-hover:border-primary/50"
@@ -84,11 +96,11 @@ export const EpisodeList: React.FC<EpisodeListProps> = ({ episodes, currentEpiso
                   </h4>
                   <div className="flex items-center gap-4">
                      <span className={cn("text-[8px] font-bold uppercase tracking-widest", currentEpisode === ep.mal_id ? "text-black/60" : "text-gray-600")}>
-                        Signal: Stabilized
+                        Signal: Verified
                      </span>
                      <div className="flex items-center gap-2">
-                        <div className={cn("w-1 h-1 rounded-full", currentEpisode === ep.mal_id ? "bg-black animate-pulse" : "bg-green-500")} />
-                        <span className={cn("text-[7px] font-black uppercase tracking-widest", currentEpisode === ep.mal_id ? "text-black/40" : "text-gray-800")}>LIVE</span>
+                        <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]", currentEpisode === ep.mal_id ? "bg-black animate-pulse" : "bg-green-500")} />
+                        <span className={cn("text-[7px] font-black uppercase tracking-widest", currentEpisode === ep.mal_id ? "text-black/40" : "text-gray-800")}>Sync Active</span>
                      </div>
                   </div>
                 </div>
@@ -96,16 +108,16 @@ export const EpisodeList: React.FC<EpisodeListProps> = ({ episodes, currentEpiso
                 <div className="flex items-center gap-6 opacity-40 group-hover:opacity-100 transition-opacity">
                    <div className="flex items-center gap-3">
                     <span className={cn(
-                      "text-[8px] font-black uppercase tracking-widest flex items-center gap-1",
-                      currentEpisode === ep.mal_id ? "text-black/70" : "text-gray-600"
+                      "text-[8px] font-black uppercase tracking-widest flex items-center gap-1 px-2 py-1 rounded bg-white/5 border border-white/5",
+                      currentEpisode === ep.mal_id ? "text-black/70 border-black/20" : "text-gray-600"
                     )}>
-                      <Subtitles size={10} /> SUB
+                      <Subtitles size={10} /> AI_SYNC
                     </span>
                     <span className={cn(
-                      "text-[8px] font-black uppercase tracking-widest flex items-center gap-1",
-                      currentEpisode === ep.mal_id ? "text-black/70" : "text-gray-600"
+                      "text-[8px] font-black uppercase tracking-widest flex items-center gap-1 px-2 py-1 rounded bg-white/5 border border-white/5",
+                      currentEpisode === ep.mal_id ? "text-black/70 border-black/20" : "text-gray-600"
                     )}>
-                      <Mic size={10} /> DUB
+                      <Mic size={10} /> DIRECT
                     </span>
                   </div>
                   <Play 
