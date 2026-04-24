@@ -280,6 +280,34 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white">CLOSE</button>
               </div>
 
+              {/* Quality Node Selector */}
+              <div className="space-y-6 border-t border-white/5 pt-8">
+                  <div className="flex items-center justify-between text-white">
+                    <div className="flex items-center gap-4">
+                      <Zap size={20} className="text-primary" />
+                      <span className="text-[11px] font-black uppercase tracking-widest">Resolution Gate</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {links.map((link) => (
+                      <button 
+                        key={link.id}
+                        onClick={() => setActiveLink(link)}
+                        className={cn("py-4 rounded-xl font-black text-[10px] border-2 uppercase", 
+                          activeLink?.id === link.id ? "bg-primary border-primary text-black" : "bg-white/5 border-white/5 text-gray-500 hover:bg-white/10"
+                        )}
+                      >
+                        {link.quality} • {link.source}
+                      </button>
+                    ))}
+                    {links.length === 0 && (
+                      <div className="col-span-2 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-[9px] font-black uppercase tracking-widest text-center italic">
+                        Node Returned 0 Streams for ID: {animeId}
+                      </div>
+                    )}
+                  </div>
+              </div>
+
               {/* Subtitle Sync */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between text-white">

@@ -49,8 +49,8 @@ function MasterGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [showDiagnostics, setShowDiagnostics] = React.useState(false);
-
   const [isDbOffline, setIsDbOffline] = React.useState(false);
+  const [addons, setAddons] = React.useState<any[]>([]);
 
   useEffect(() => {
     // Inject global styles to ensure Branding consistency
@@ -81,6 +81,9 @@ export default function App() {
       try {
         const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
         if (error && error.code === '401') setIsDbOffline(true);
+        
+        const { data } = await supabase.from('user_addons').select('*');
+        if (data) setAddons(data);
       } catch {
         setIsDbOffline(true);
       }

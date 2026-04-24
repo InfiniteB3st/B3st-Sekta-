@@ -24,7 +24,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {!isAuthPage && (
         <header className="glass-header h-20 flex items-center shadow-xl">
           <div className="max-w-[1700px] w-full mx-auto px-6 md:px-12 flex items-center justify-between gap-12">
-            <Link to="/" className="shrink-0">
+            <Link to="/home" className="shrink-0">
                <h1 className="logo-text">
                  <span className="logo-b3st">B3ST</span>
                  <span className="logo-sekta">SEKTA</span>
@@ -91,7 +91,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <footer className="mt-40 bg-surface border-t border-white/5 pt-24 pb-12 px-8">
           <div className="max-w-[1700px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-20">
             <div className="col-span-1 md:col-span-2 space-y-10">
-              <Link to="/" className="shrink-0 scale-125 origin-left inline-block">
+              <Link to="/home" className="shrink-0 scale-125 origin-left inline-block">
                  <h1 className="logo-text">
                    <span className="logo-b3st">B3ST</span>
                    <span className="logo-sekta">SEKTA</span>

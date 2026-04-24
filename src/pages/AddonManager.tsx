@@ -63,20 +63,25 @@ export default function AddonManager() {
     setError(null);
 
     try {
-      // In a real Stremio-style app, this would fetch from manifestUrl
-      // For this implementation, we simulate manifest resolution and source mapping
-      const isStremio = manifestUrl.includes('stremio') || manifestUrl.endsWith('.json');
+      // SMART PARSER: Fetch and validate remote manifest
+      const response = await fetch(manifestUrl.replace('stremio://', 'https://'));
+      if (!response.ok) throw new Error("Could not reach manifest endpoint.");
       
+      const manifest = await response.json();
+      
+      // Validation Logic
+      if (!manifest.id || !manifest.name || !Array.isArray(manifest.resources)) {
+        throw new Error("Invalid Add-on Manifest. Missing ID, Name, or Resources.");
+      }
+
       const newAddon: AddonManifest = {
-        addon_id: `node-${Math.random().toString(36).substr(2, 6)}`,
-        name: manifestUrl.includes('hianime') ? 'HiAnime Core' : 
-              manifestUrl.includes('gogo') ? 'GogoServer' : 
-              manifestUrl.includes('crunchy') ? 'CR-Premium' : 'Custom Node',
-        version: '1.2.4',
-        description: 'Multi-threaded streaming node with global CDN edge distribution.',
+        addon_id: manifest.id,
+        name: manifest.name,
+        version: manifest.version || '1.0.0',
+        description: manifest.description || 'Verified B3st Sekta Streaming Node.',
         url: manifestUrl,
         enabled: true,
-        type: 'streaming'
+        type: manifest.types?.includes('movie') ? 'streaming' : 'catalog'
       };
 
       if (user) {
@@ -90,15 +95,21 @@ export default function AddonManager() {
         if (dbError) throw dbError;
       } else {
         const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
-        local.push(newAddon);
-        localStorage.setItem('sekta_addons', JSON.stringify(local));
+        // Prevent duplicates
+        const filtered = local.filter((a: any) => a.url !== manifestUrl);
+        filtered.push(newAddon);
+        localStorage.setItem('sekta_addons', JSON.stringify(filtered));
       }
 
-      setAddons(prev => [...prev, newAddon]);
+      setAddons(prev => {
+        const filtered = prev.filter(a => a.url !== manifestUrl);
+        return [...filtered, newAddon];
+      });
       setManifestUrl('');
       setActiveTab('installed');
     } catch (err: any) {
-      setError(`Handshake Failed: ${err.message}`);
+      setError(`Validation Failed: ${err.message}`);
+      console.error('Manifest Parse Error:', err);
     } finally {
       setLoading(false);
     }

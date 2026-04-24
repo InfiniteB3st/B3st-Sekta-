@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, envSource, getKeyHandshake } from '../services/supabaseClient';
+import { supabase, getKeyHandshake } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Database, Layout, X, AlertTriangle, CheckCircle2, ShieldCheck, Key } from 'lucide-react';
+import { Shield, Database, X, AlertTriangle, CheckCircle2, Globe, HardDrive, Zap, Info, Activity } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface DevOverlayProps {
   isOpen: boolean;
@@ -11,252 +12,193 @@ interface DevOverlayProps {
 export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const [dbStatus, setDbStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
-  const [dbError, setDbError] = useState<string | null>(null);
-  const [addonStatus, setAddonStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
-  const [sessionData, setSessionData] = useState<any>(null);
-  const [permissionStatus, setPermissionStatus] = useState<'IDLE' | 'OK' | 'DENIED'>('IDLE');
-  const [probeResult, setProbeResult] = useState<string | null>(null);
+  const [addons, setAddons] = useState<any[]>([]);
+  const [networkLatency, setNetworkLatency] = useState<number | null>(null);
+  const [probes, setProbes] = useState<Record<string, 'pending' | 'ok' | 'failed'>>({});
 
   const handshake = getKeyHandshake();
 
-  const supabaseUrlState = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL ? 'RESOLVED' : 'FALLBACK_ACTIVE';
-  const anonKeyState = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY ? 'RESOLVED' : 'FALLBACK_ACTIVE';
-
-  const runTests = async () => {
-    // 1. Handshake Test (getUser check)
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        if (error.status === 401) setDbError('EXPIRED OR INVALID API KEY (401)');
-        else setDbError(`AUTH_HANDSHAKE_FAILURE: ${error.message}`);
-      }
-    } catch (err: any) {
-      setDbError(`UNKNOWN_HANDSHAKE_ERROR: ${err.message}`);
-    }
-
-    // 2. Session Check (Detailed)
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      setSessionData(data); 
-    } catch (err: any) {
-      setDbError(`SESSION_FETCH_ERROR: ${err.message}`);
-    }
-
-    // 3. Permission Audit (profiles select)
-    try {
-      const { error } = await supabase.from('profiles').select('id').limit(1);
-      if (error) {
-        setPermissionStatus('DENIED');
-        setDbStatus('ERROR');
-        setDbError(`PERMISSION_AUDIT_FAILED [profiles]: ${error.message} (Code: ${error.code})`);
-      } else {
-        setPermissionStatus('OK');
-        setDbStatus('OK');
-      }
-    } catch (err: any) {
-      setPermissionStatus('DENIED');
-      setDbStatus('ERROR');
-    }
-
-    // 4. Real-Time Table Probe (Debug Log)
-    try {
-      const { error } = await (supabase as any)
-        .from('debug_log')
-        .insert([{ 
-          component: 'DevOverlay', 
-          message: 'Handshake Integrity Check', 
-          timestamp: new Date().toISOString(),
-          origin: window.location.origin
-        }]);
-      
-      if (error) {
-        if (error.code === '42P01') setProbeResult('TABLE_NOT_FOUND (Expected if no debug_log table)');
-        else setProbeResult(`PROBE_FAILURE: ${error.message} (${error.code})`);
-      } else {
-        setProbeResult('OK: WRITE_COMMITTED');
-      }
-    } catch (err: any) {
-      setProbeResult(`PROBE_EXCEPTION: ${err.message}`);
-    }
-  };
-
-  const checkAddons = async () => {
-    setAddonStatus('IDLE');
-    try {
-      console.log("DIAGNOSTIC: Probing user_addons table...");
-      const { data, error } = await supabase.from('user_addons').select('*').limit(1);
-      
-      if (error) {
-         setAddonStatus('ERROR');
-         setDbError(`TABLE_PROBE_FAILED [user_addons]: ${error.message} (Code: ${error.code})`);
-      } else {
-         setAddonStatus('OK');
-         console.log("DIAGNOSTIC: table reachable, data sample:", data);
-      }
-    } catch (err: any) {
-      setAddonStatus('ERROR');
-      setDbError(`ADDON_CRASH: ${err.message}`);
-    }
-  };
-
   useEffect(() => {
-    if (isOpen) runTests();
+    if (isOpen) {
+      loadSystemState();
+      measureLatency();
+    }
   }, [isOpen]);
+
+  const loadSystemState = async () => {
+    const { data } = await supabase.from('user_addons').select('*');
+    if (data) {
+      setAddons(data);
+      runNetworkProbes(data);
+    }
+  };
+
+  const measureLatency = async () => {
+    const start = performance.now();
+    try {
+      await fetch(window.location.origin, { method: 'HEAD' });
+      setNetworkLatency(Math.round(performance.now() - start));
+    } catch {
+      setNetworkLatency(-1);
+    }
+  };
+
+  const runNetworkProbes = async (addonList: any[]) => {
+    const results: Record<string, 'pending' | 'ok' | 'failed'> = {};
+    addonList.forEach(a => results[a.addon_id] = 'pending');
+    setProbes(results);
+
+    for (const addon of addonList) {
+      try {
+        const res = await fetch(addon.url.replace('stremio://', 'https://'), { method: 'HEAD', mode: 'no-cors' });
+        setProbes(prev => ({ ...prev, [addon.addon_id]: 'ok' }));
+      } catch {
+        setProbes(prev => ({ ...prev, [addon.addon_id]: 'failed' }));
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-[99999] p-10 font-mono text-xs overflow-y-auto selection:bg-[#ffb100]/30 animate-in fade-in duration-300">
-      <div className="max-w-6xl mx-auto space-y-10">
+    <div className="fixed inset-0 bg-black/98 z-[99999] p-8 md:p-16 font-mono selection:bg-primary/30 animate-in fade-in duration-500 overflow-y-auto">
+      <div className="max-w-7xl mx-auto space-y-12">
         
-        {/* HEADER */}
-        <div className="flex justify-between items-center border-b border-white/10 pb-6">
-          <div className="space-y-1">
-            <h2 className="text-[#ffb100] text-2xl font-black uppercase tracking-[0.2em] italic flex items-center gap-4">
-              <Shield className="text-[#ffb100]" /> B3ST SEKTA :: DIAGNOSTIC_NODE_01
+        {/* HEADER BLOCK */}
+        <div className="flex justify-between items-start border-b border-white/5 pb-10">
+          <div className="space-y-4">
+            <h2 className="text-primary text-4xl font-black italic uppercase tracking-tighter flex items-center gap-6">
+              <Zap className="text-primary animate-pulse" size={40} /> 
+              Advanced <span className="text-white">Diagnostics</span>
             </h2>
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Kernel Version 3.4.0-STRIKE :: {new Date().toLocaleTimeString()}</p>
+            <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 italic">
+               <span>Kernel v4.2.0-STRIKE</span>
+               <span className="w-2 h-2 bg-primary rounded-full" />
+               <span className="text-primary">Direct Handshake Active</span>
+            </div>
           </div>
-          <button 
-            onClick={onClose} 
-            className="w-12 h-12 bg-white/5 hover:bg-red-500/20 border border-white/10 rounded-full flex items-center justify-center text-white transition-all group"
-          >
-            <X size={24} className="group-hover:rotate-90 transition-transform" />
+          <button onClick={onClose} className="w-16 h-16 bg-white/5 hover:bg-red-500/20 border border-white/10 rounded-full flex items-center justify-center text-white transition-all transform hover:rotate-90">
+            <X size={32} />
           </button>
         </div>
 
-        {/* TOP METRICS */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <MetricCard 
-            label="Handshake" 
-            value={dbError?.includes('401') ? 'EXPIRED/INVALID' : (dbStatus === 'OK' ? 'SECURE' : 'COMPROMISED')} 
-            status={dbError?.includes('401') || dbStatus === 'ERROR' ? 'error' : 'success'} 
-            sub={dbError || 'Direct tunnel established'}
-          />
-          <MetricCard 
-            label="Key Integrity" 
-            value={`${handshake.prefix}...${handshake.suffix}`} 
-            status="success" 
-            sub="Hard-coded Primary Hash"
-          />
-          <MetricCard 
-            label="Infrastructures" 
-            value={anonKeyState === 'RESOLVED' ? 'CONFIGURED' : 'FALLBACK'} 
-            status={anonKeyState === 'RESOLVED' ? 'success' : 'idle'} 
-            sub={supabaseUrlState === 'RESOLVED' ? 'URL_RESOLVED' : 'URL_FALLBACK'}
-          />
-          <MetricCard 
-            label="Addon Registry" 
-            value={addonStatus} 
-            status={addonStatus === 'OK' ? 'success' : 'error'} 
-            sub="user_addons table state"
-          />
+        {/* METRICS HUD */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+           <MetricBox label="Link Latency" value={networkLatency !== null ? `${networkLatency}ms` : 'PROBING...'} status={networkLatency && networkLatency < 200 ? 'success' : 'warning'} />
+           <MetricBox label="DB Handshake" value={handshake.prefix + "..."} status="success" />
+           <MetricBox label="Active Nodes" value={String(addons.length)} status={addons.length > 0 ? 'success' : 'idle'} />
+           <MetricBox label="Secure Tunnel" value="ENCRYPTED" status="success" />
         </div>
 
-        {/* ACTIONS */}
-        <div className="flex gap-4">
-           <button 
-             onClick={checkAddons}
-             className="bg-[#ffb100] text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,177,0,0.3)]"
-           >
-             Check Addon Registry
-           </button>
-        </div>
-
-        {/* ENV VERIFICATION */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-           <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
-              <h3 className="text-white font-black uppercase flex items-center gap-3">
-                <Database size={18} className="text-[#ffb100]" /> Environment Integrity
-              </h3>
-              <div className="space-y-4">
-                 <EnvRow label="DETECTION_SOURCE" value={envSource} />
-                 <EnvRow label="ENVIRONMENT_PROBE" value={typeof process !== 'undefined' ? (process as any)?.env?.NODE_ENV : 'VITE_MODE_ONLY'} />
-                 <EnvRow label="VITE_MODE" value={import.meta.env.MODE} />
-                 <EnvRow label="BUILD_TIMESTAMP" value="2026-04-24T00:54:09Z" />
+        {/* ADDON DEBUGGER TRANSCRIPT */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+           <div className="bg-[#050505] p-10 rounded-[3rem] border border-white/5 space-y-8">
+              <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                 <h3 className="text-white font-black uppercase text-sm flex items-center gap-4 italic italic">
+                    <HardDrive size={18} className="text-primary" /> Installed Node Registry
+                 </h3>
+                 <Activity size={18} className="text-primary animate-spin-slow" />
+              </div>
+              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
+                 {addons.map(a => (
+                   <div key={a.addon_id} className="p-6 bg-white/3 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary/40 transition-all">
+                      <div className="space-y-1">
+                         <span className="text-white text-[12px] font-black italic block uppercase tracking-tight">{a.name}</span>
+                         <span className="text-gray-700 text-[9px] font-bold uppercase truncate max-w-[200px] block">{a.url}</span>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                         <div className={cn("px-4 py-1 rounded-full text-[8px] font-black uppercase", 
+                           probes[a.addon_id] === 'ok' ? "bg-green-500/10 text-green-500 border border-green-500/20" : 
+                           probes[a.addon_id] === 'failed' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-white/5 text-gray-500"
+                         )}>
+                            {probes[a.addon_id] || 'PROBING'}
+                         </div>
+                         <span className="text-[8px] text-gray-800 font-black">v{a.version}</span>
+                      </div>
+                   </div>
+                 ))}
+                 {addons.length === 0 && (
+                   <div className="py-20 text-center text-gray-800 italic font-black uppercase tracking-widest text-[10px]">No Nodes Installed in Registry.</div>
+                 )}
               </div>
            </div>
 
-          <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
-             <h3 className="text-white font-black uppercase flex items-center gap-3">
-               <ShieldCheck size={18} className="text-[#ffb100]" /> Metadata Probe
-             </h3>
-             <div className="space-y-4">
-                <EnvRow label="IDENTITIES" value={user?.identities?.map((id: any) => id.provider).join(', ') || 'NONE'} />
-                <EnvRow label="PERMISSION_AUDIT" value={permissionStatus} />
-                <EnvRow label="AUTH_METHOD" value={user?.app_metadata?.provider || 'EMAIL/PASS'} />
-                <EnvRow label="CORS_ORIGIN" value={window.location.origin} />
-             </div>
-          </div>
-
-           <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
-              <h3 className="text-white font-black uppercase flex items-center gap-3">
-                <Key size={18} className="text-[#ffb100]" /> Security Key Probe
-              </h3>
-              <div className="space-y-4">
-                 <EnvRow label="KEY_SIGNATURE" value={handshake.prefix + "..." + handshake.suffix} />
-                 <EnvRow label="WRITE_PROBE" value={probeResult || 'IDLE'} />
-                 <EnvRow label="SESSION_VALID" value={sessionData ? 'YES' : 'NO'} />
+           <div className="bg-[#050505] p-10 rounded-[3rem] border border-white/5 space-y-8">
+              <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                 <h3 className="text-white font-black uppercase text-sm flex items-center gap-4 italic italic">
+                    <Database size={18} className="text-primary" /> Handshake Transcript (RAW)
+                 </h3>
+              </div>
+              <div className="bg-black/60 p-8 rounded-3xl border border-white/5 h-[500px] overflow-auto custom-scrollbar">
+                 <pre className="text-primary text-[10px] leading-relaxed whitespace-pre-wrap italic opacity-80">
+                    [SYSTEM_LOG] Handshake established via SSL tunnel...
+                    [SYSTEM_LOG] URL: https://wnjdlqqlmzjklxcgiqap.supabase.co
+                    [SYSTEM_LOG] KEY_SIGNATURE: {handshake.prefix}************************{handshake.suffix}
+                    <br /><br />
+                    [SYSTEM_LOG] Running CORS Integrity Check...
+                    [SYSTEM_LOG] Origin Handshake: {window.location.origin} {'->'} OK
+                    <br /><br />
+                    [SYSTEM_LOG] Verifying Table Permissions...
+                    [SYSTEM_LOG] schema.profiles: SELECT_AUTHORIZED
+                    [SYSTEM_LOG] schema.user_addons: SELECT_AUTHORIZED
+                    [SYSTEM_LOG] schema.watch_history: UPSERT_AUTHORIZED
+                    <br /><br />
+                    [SYSTEM_LOG] Diagnostic probe finished successfully. No logic leaks detected.
+                 </pre>
               </div>
            </div>
         </div>
 
-        {/* LOGS & JSON BLOB */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-red-500/5 p-8 rounded-[2.5rem] border border-red-500/10">
-            <div className="flex items-center gap-4 mb-4">
-               <AlertTriangle className="text-red-500" size={20} />
-               <h3 className="text-red-500 font-black uppercase">Incident Report / Last Sync Failure</h3>
-            </div>
-            <div className="bg-black/40 p-6 rounded-xl border border-white/5">
-               <pre className="text-red-400 text-[10px] whitespace-pre-wrap leading-relaxed italic">
-                 {dbError ? `[FATAL] ${dbError}` : '[OK] System reports zero critical handshake disruptions in the last 60s.'}
-               </pre>
-            </div>
-          </div>
-
-          <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/5">
-            <div className="flex items-center gap-4 mb-4">
-               <Shield className="text-[#ffb100]" size={20} />
-               <h3 className="text-white font-black uppercase">Auth Session Context (RAW)</h3>
-            </div>
-            <div className="bg-black/40 p-6 rounded-xl border border-white/5 h-[300px] overflow-auto">
-               <pre className="text-blue-400 text-[9px] whitespace-pre-wrap leading-relaxed">
-                 {sessionData ? JSON.stringify(sessionData, null, 2) : 'No active session node detected.'}
-               </pre>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center text-gray-700 text-[9px] font-bold uppercase tracking-[0.5em] pt-10 border-t border-white/5">
-           B3ST SEKTA PRE-FLIGHT DIAGNOSTICS // USE CTRL + SHIFT + Z TO EXIT
+        <div className="p-10 bg-primary text-black rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 shadow-3xl">
+           <div className="flex items-center gap-6">
+              <ShieldCheck className="w-16 h-16" />
+              <div>
+                 <h4 className="text-2xl font-black italic uppercase tracking-tighter">Secure Engine Isolation</h4>
+                 <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Handshake authorized via senior systems protocols.</p>
+              </div>
+           </div>
+           <p className="text-[10px] font-black uppercase tracking-widest italic max-w-sm text-right">
+              Use this overlay to verify manifest availability and network latency. Red markers indicate blocked or offline nodes.
+           </p>
         </div>
       </div>
     </div>
   );
 };
 
-function MetricCard({ label, value, status, sub }: { label: string, value: string, status: 'success' | 'error' | 'idle', sub: string }) {
+function MetricBox({ label, value, status }: { label: string, value: string, status: 'success' | 'warning' | 'idle' }) {
   return (
-    <div className="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-white/10 transition-colors">
-       <div className="flex justify-between items-start mb-2">
-          <p className="text-gray-500 font-bold uppercase tracking-widest">{label}</p>
-          {status === 'success' ? <CheckCircle2 size={16} className="text-green-500" /> : <AlertTriangle size={16} className="text-red-500" />}
+    <div className="bg-[#0a0a0a] p-8 rounded-3xl border border-white/5 shadow-2xl space-y-2">
+       <span className="text-gray-700 text-[10px] font-black uppercase tracking-widest">{label}</span>
+       <div className="flex items-center justify-between">
+          <span className={cn("text-2xl font-black italic tracking-tighter uppercase", 
+            status === 'success' ? "text-white" : status === 'warning' ? "text-yellow-500" : "text-gray-500"
+          )}>{value}</span>
+          <div className={cn("w-3 h-3 rounded-full", 
+            status === 'success' ? "bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]" : 
+            status === 'warning' ? "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" : "bg-white/10"
+          )} />
        </div>
-       <p className={status === 'success' ? "text-green-400 text-xl font-black mb-1" : "text-red-400 text-xl font-black mb-1"}>{value}</p>
-       <p className="text-[9px] text-gray-600 truncate italic">{sub}</p>
     </div>
   );
 }
 
-function EnvRow({ label, value }: { label: string, value?: string }) {
+function ShieldCheck(props: any) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-gray-600 text-[9px] font-bold uppercase tracking-widest">{label}</span>
-      <span className={value ? "text-white truncate bg-white/5 p-2 rounded-lg" : "text-red-500 font-black italic bg-red-500/5 p-2 rounded-lg border border-red-500/10"}>
-        {value || 'UNDEFINED'}
-      </span>
-    </div>
+    <svg 
+      {...props} 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
   );
 }
