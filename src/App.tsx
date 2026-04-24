@@ -20,6 +20,51 @@ import AdminPanel from './pages/AdminPanel';
 import { jikanService } from './services/jikan';
 import { HelpCenter, DMCA, Terms, Privacy } from './components/FooterPages';
 import { DevOverlay } from './components/DevOverlay';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("CRITICAL_SYSTEM_CRASH:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-12 text-center space-y-8">
+          <div className="w-32 h-32 bg-red-500/10 rounded-full flex items-center justify-center border-4 border-red-500/20 animate-pulse">
+            <AlertTriangle size={64} className="text-red-500" />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-5xl font-black italic text-white uppercase tracking-tighter">System <span className="text-red-500">Fractured</span></h1>
+            <p className="text-gray-500 font-bold uppercase tracking-widest text-[11px] max-w-md mx-auto">
+              The B3st Sekta kernel encountered a memory isolation failure or routing leak.
+            </p>
+            <div className="bg-white/5 p-4 rounded-xl border border-white/5 font-mono text-[9px] text-red-400 overflow-auto max-w-2xl">
+              ERROR_CODE: {String(this.state.error?.message || "KERNEL_PANIC")}
+            </div>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-primary text-black px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center gap-4 hover:scale-105 active:scale-95 transition-all"
+          >
+            <RefreshCw size={20} />
+            Reboot Interface
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * MASTER GUARD: 100% SUCCESS RATE REDIRECTS
@@ -95,7 +140,12 @@ export default function App() {
     // Listen for Auth Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
        console.log(`AUTH_EVENT: ${event}`, session?.user?.id);
-       if (event === 'SIGNED_IN') checkDb();
+       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+         checkDb();
+       }
+       if (event === 'SIGNED_OUT') {
+         window.location.href = '/login';
+       }
     });
 
     return () => subscription.unsubscribe();
@@ -162,49 +212,51 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Router>
-          <MasterGuard>
-            <Gatekeeper>
-              <Layout>
-                <Routes>
-                  {/* Public Entry */}
-                  <Route path="/" element={<LandingPage />} />
-                  
-                  {/* Public Core */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/auth" element={<Navigate to="/login" replace />} />
-                  <Route path="/finish-setup" element={<SetupAccount />} />
-                  
-                  {/* Authenticated Application */}
-                  <Route path="/" element={<Home />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/filter" element={<Filter />} />
-                  <Route path="/anime/:id" element={<AnimeDetails />} />
-                  <Route path="/watch/:id" element={<Watch />} />
-                  
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/addons" element={<AddonManager />} />
-                  <Route path="/admin" element={<AdminPanel />} />
-                  
-                  {/* Footer Pages */}
-                  <Route path="/help" element={<HelpCenter />} />
-                  <Route path="/dmca" element={<DMCA />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  
-                  {/* Global Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Layout>
-            </Gatekeeper>
-          </MasterGuard>
-          <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <MasterGuard>
+              <Gatekeeper>
+                <Layout>
+                  <Routes>
+                    {/* Public Entry */}
+                    <Route path="/" element={<LandingPage />} />
+                    
+                    {/* Public Core */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/auth" element={<Navigate to="/login" replace />} />
+                    <Route path="/finish-setup" element={<SetupAccount />} />
+                    
+                    {/* Authenticated Application */}
+                    <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/filter" element={<Filter />} />
+                    <Route path="/anime/:id" element={<AnimeDetails />} />
+                    <Route path="/watch/:id" element={<Watch />} />
+                    
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/addons" element={<AddonManager />} />
+                    <Route path="/admin" element={<AdminPanel />} />
+                    
+                    {/* Footer Pages */}
+                    <Route path="/help" element={<HelpCenter />} />
+                    <Route path="/dmca" element={<DMCA />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    
+                    {/* Global Fallback */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Layout>
+              </Gatekeeper>
+            </MasterGuard>
+            <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

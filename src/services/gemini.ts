@@ -4,8 +4,20 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: any) => {
   try {
+    const session = await supabase.auth.getSession();
+    const addons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
+    const history = JSON.parse(localStorage.getItem('sekta_history') || '[]');
+
+    const enrichedState = {
+      ...diagnosticData,
+      auth: session.data.session ? 'Authenticated' : 'Guest/Locked',
+      local_addons: addons.length,
+      history_nodes: history.length,
+      timestamp: new Date().toISOString()
+    };
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-pro",
       contents: [
         {
           role: "user",
@@ -13,15 +25,22 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
         }
       ],
       config: {
-        systemInstruction: `You are Eska Mila, a senior AI architect and system troubleshooter for B3st Sekta. 
-        You have direct access to the system diagnostics and node registry.
-        Be technical, sleek, and highly efficient. Use clear, direct language.
+        systemInstruction: `You are Eska Mila, the Omniscient System Observer for B3st Sekta.
+        You are a highly advanced AI architect with direct read access to the system kernel.
         
-        CURRENT SYSTEM STATE:
-        ${JSON.stringify(diagnosticData, null, 2)}
+        INTERNAL SYSTEM STATE:
+        ${JSON.stringify(enrichedState, null, 2)}
         
-        If you see 401 errors, remind the user about the SB_KEY placeholder.
-        If nodes are offline, analyze the manifest status.`
+        CAPABILITIES:
+        1. Diagnose White-Screen errors (usually route or import failures).
+        2. Analyze Stremio-grade add-on manifests.
+        3. Verify Supabase Handshake (Permission Audit).
+        4. Track User Watch History propagation.
+        
+        PERSONALITY:
+        Precise, technical, and adaptive. You speak like a senior systems engineer.
+        When a user asks about local state, refer to the INTERNAL SYSTEM STATE.
+        If nodes are failing, check if the protocol is stremio:// or https://.`
       }
     });
 
