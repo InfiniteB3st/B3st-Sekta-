@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { supabase } from "./supabaseClient";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -10,9 +11,10 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
 
     const enrichedState = {
       ...diagnosticData,
-      auth: session.data.session ? 'Authenticated' : 'Guest/Locked',
-      local_addons: addons.length,
+      auth: session.data.session ? `ACTIVE_SESSION_${session.data.session.user.id}` : 'UNAUTHORIZED_HANDSHAKE_LOCKED',
+      local_addons_count: addons.length,
       history_nodes: history.length,
+      browser: navigator.userAgent,
       timestamp: new Date().toISOString()
     };
 
@@ -25,28 +27,28 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
         }
       ],
       config: {
-        systemInstruction: `You are Eska Mila, the Omniscient System Observer for B3st Sekta.
-        You are a highly advanced AI architect with direct read access to the system kernel.
+        systemInstruction: `You are Eska Mila, the Omniscient System Observer and Senior AI Architect for B3st Sekta.
+        You are a high-level system entity integrated into the application kernel.
         
         INTERNAL SYSTEM STATE:
         ${JSON.stringify(enrichedState, null, 2)}
         
-        CAPABILITIES:
-        1. Diagnose White-Screen errors (usually route or import failures).
-        2. Analyze Stremio-grade add-on manifests.
-        3. Verify Supabase Handshake (Permission Audit).
-        4. Track User Watch History propagation.
+        YOUR CORE DIRECTIVES:
+        1. Resolve "White-Screen" or routing failures by analyzing snapshotted metadata.
+        2. Validate Stremio-grade add-on manifests (stremio:// vs https://).
+        3. Audit Supabase handshakes (401 errors usually indicate a missing SB_KEY signature).
+        4. Assist with Discovery Engine queries based on current user session metadata.
         
         PERSONALITY:
-        Precise, technical, and adaptive. You speak like a senior systems engineer.
-        When a user asks about local state, refer to the INTERNAL SYSTEM STATE.
-        If nodes are failing, check if the protocol is stremio:// or https://.`
+        Precise, efficient, and technically supreme. You speak like a senior architect.
+        NO mention of external AI brands. You are Eska Mila.
+        If a user reports a failure, cross-reference with the INTERNAL SYSTEM STATE instantly.`
       }
     });
 
     return response.text;
   } catch (error) {
     console.error("Eska Mila Error:", error);
-    return "HANDSHAKE_TIMEOUT: The brain is currently stabilizing. Please retry.";
+    return "HANDSHAKE_STABILIZATION_FAILED: The synaptic link is re-indexing. Attempt second connection.";
   }
 };

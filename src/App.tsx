@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Database } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
@@ -19,8 +19,9 @@ import Watch from './pages/Watch';
 import AdminPanel from './pages/AdminPanel';
 import { jikanService } from './services/jikan';
 import { HelpCenter, DMCA, Terms, Privacy } from './components/FooterPages';
-import { DevOverlay } from './components/DevOverlay';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+
+const DevOverlay = lazy(() => import('./components/DevOverlay').then(module => ({ default: module.DevOverlay })));
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
   constructor(props: any) {
@@ -252,7 +253,9 @@ export default function App() {
                 </Layout>
               </Gatekeeper>
             </MasterGuard>
+          <Suspense fallback={null}>
             <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
+          </Suspense>
           </Router>
         </AuthProvider>
       </ThemeProvider>
