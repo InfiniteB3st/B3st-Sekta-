@@ -19,9 +19,11 @@ const getEnv = (key: string) => {
   return val;
 };
 
-// CRITICAL: Hard-coded Primary Sources for rock-solid deployment stability.
+// CRITICAL: Supabase Cluster Configuration
+// WARNING: The SB_KEY below appears to be a PLACEHOLDER or is incomplete.
+// Max, you MUST replace this with your actual 'anon public' key from the Supabase Dashboard.
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.[REPLACE_THIS_WITH_YOUR_ACTUAL_SIGNATURE]";
 
 // MASTER CLIENT PROVISIONING
 export const supabase = createClient(SB_URL, SB_KEY, {
@@ -139,4 +141,31 @@ export const syncProfile = async (payload: any) => {
     .from('profiles')
     .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
   if (error) console.error('Profile Sync Failure:', error);
+};
+
+export const signUpUser = async (email: string, pass: string, username: string) => {
+  const { data, error } = await supabase.auth.signUp({ 
+    email, 
+    password: pass,
+    options: {
+      data: { username }
+    }
+  });
+  
+  if (error) throw error;
+  
+  if (data.user) {
+    // BRIDGE: Manually insert into profiles if trigger fails
+    const { error: profileError } = await (supabase as any)
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        username: username,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+      
+    if (profileError) console.warn('Profile bridge warning:', profileError.message);
+  }
+  
+  return data;
 };

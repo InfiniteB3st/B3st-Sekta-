@@ -64,12 +64,17 @@ export default function AddonManager() {
 
     try {
       // SMART PARSER: Fetch and validate remote manifest
-      const response = await fetch(manifestUrl.replace('stremio://', 'https://'));
+      let targetUrl = manifestUrl.replace('stremio://', 'https://');
+      if (!targetUrl.endsWith('/manifest.json') && !targetUrl.includes('.json')) {
+        targetUrl = targetUrl.replace(/\/$/, '') + '/manifest.json';
+      }
+
+      const response = await fetch(targetUrl);
       if (!response.ok) throw new Error("Could not reach manifest endpoint.");
       
       const manifest = await response.json();
       
-      // Validation Logic
+      // Strict Validation Logic
       if (!manifest.id || !manifest.name || !Array.isArray(manifest.resources)) {
         throw new Error("Invalid Add-on Manifest. Missing ID, Name, or Resources.");
       }
@@ -95,7 +100,6 @@ export default function AddonManager() {
         if (dbError) throw dbError;
       } else {
         const local = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
-        // Prevent duplicates
         const filtered = local.filter((a: any) => a.url !== manifestUrl);
         filtered.push(newAddon);
         localStorage.setItem('sekta_addons', JSON.stringify(filtered));
