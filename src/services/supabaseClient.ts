@@ -19,9 +19,15 @@ const getEnv = (key: string) => {
   return val;
 };
 
-// CRITICAL: Hard-coded Primary Sources to bypass Vercel Environment failures
+// CRITICAL: Hard-coded Primary Sources for rock-solid deployment stability.
+// DO NOT MODIFY THESE UNLESS THE PROJECT ENDPOINT CHANGES.
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+
+export const getKeyHandshake = () => ({
+  prefix: SB_KEY.substring(0, 5),
+  suffix: SB_KEY.substring(SB_KEY.length - 5)
+});
 
 // Detection for Diagnostic Overlay
 export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Primary Source";

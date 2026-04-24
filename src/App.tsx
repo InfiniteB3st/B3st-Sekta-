@@ -48,8 +48,24 @@ export default function App() {
   const [showDiagnostics, setShowDiagnostics] = React.useState(false);
 
   useEffect(() => {
+    // Inject global styles to ensure Branding consistency
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .logo-b3st { color: #ffffff; }
+      .logo-sekta { color: #ffb100; }
+      .accent-primary { color: #ffb100; }
+      .bg-primary { background-color: #ffb100 !important; }
+      .border-primary { border-color: #ffb100 !important; }
+      .text-primary { color: #ffb100 !important; }
+      :root { --primary-color: #ffb100; }
+    `;
+    document.head.appendChild(style);
+    document.title = "B3st Sekta";
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Changed to Z as emergency bypass
+      // Emergency bypass shortcut: Ctrl + Shift + Z
       if (e.ctrlKey && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
         setShowDiagnostics(prev => !prev);
       }

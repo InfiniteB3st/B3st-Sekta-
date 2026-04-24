@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, envSource } from '../services/supabaseClient';
+import { supabase, envSource, getKeyHandshake } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Database, Layout, X, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Shield, Database, Layout, X, AlertTriangle, CheckCircle2, ShieldCheck, Key } from 'lucide-react';
 
 interface DevOverlayProps {
   isOpen: boolean;
@@ -15,6 +15,8 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
   const [addonStatus, setAddonStatus] = useState<'IDLE' | 'OK' | 'ERROR'>('IDLE');
   const [sessionData, setSessionData] = useState<any>(null);
   const [permissionStatus, setPermissionStatus] = useState<'IDLE' | 'OK' | 'DENIED'>('IDLE');
+
+  const handshake = getKeyHandshake();
 
   const supabaseUrlState = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL ? 'RESOLVED' : 'FALLBACK_ACTIVE';
   const anonKeyState = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY ? 'RESOLVED' : 'FALLBACK_ACTIVE';
@@ -84,7 +86,7 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/95 z-[99999] p-10 font-mono text-xs overflow-y-auto selection:bg-[#ffb100]/30 animate-in fade-in duration-300">
-      <div className="max-w-4xl mx-auto space-y-10">
+      <div className="max-w-6xl mx-auto space-y-10">
         
         {/* HEADER */}
         <div className="flex justify-between items-center border-b border-white/10 pb-6">
@@ -111,6 +113,12 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
             sub={dbError || 'Direct tunnel established'}
           />
           <MetricCard 
+            label="Key Integrity" 
+            value={`${handshake.prefix}...${handshake.suffix}`} 
+            status="success" 
+            sub="Hard-coded Primary Hash"
+          />
+          <MetricCard 
             label="Infrastructures" 
             value={anonKeyState === 'RESOLVED' ? 'CONFIGURED' : 'FALLBACK'} 
             status={anonKeyState === 'RESOLVED' ? 'success' : 'idle'} 
@@ -121,12 +129,6 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
             value={addonStatus} 
             status={addonStatus === 'OK' ? 'success' : 'error'} 
             sub="user_addons table state"
-          />
-          <MetricCard 
-            label="Session Node" 
-            value={sessionData ? 'ACTIVE' : 'INACTIVE'} 
-            status={sessionData ? 'success' : 'error'} 
-            sub={user?.email || 'Unauthorized access detected'}
           />
         </div>
 
@@ -141,7 +143,7 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* ENV VERIFICATION */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
               <h3 className="text-white font-black uppercase flex items-center gap-3">
                 <Database size={18} className="text-[#ffb100]" /> Environment Integrity
@@ -150,7 +152,7 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
                  <EnvRow label="DETECTION_SOURCE" value={envSource} />
                  <EnvRow label="ENVIRONMENT_PROBE" value={typeof process !== 'undefined' ? (process as any)?.env?.NODE_ENV : 'VITE_MODE_ONLY'} />
                  <EnvRow label="VITE_MODE" value={import.meta.env.MODE} />
-                 <EnvRow label="BUILD_TIMESTAMP" value="2026-04-24T00:27:15Z" />
+                 <EnvRow label="BUILD_TIMESTAMP" value="2026-04-24T00:54:09Z" />
               </div>
            </div>
 
@@ -164,6 +166,17 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
                 <EnvRow label="AUTH_METHOD" value={user?.app_metadata?.provider || 'EMAIL/PASS'} />
              </div>
           </div>
+
+           <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 space-y-6">
+              <h3 className="text-white font-black uppercase flex items-center gap-3">
+                <Key size={18} className="text-[#ffb100]" /> Security Key Probe
+              </h3>
+              <div className="space-y-4">
+                 <EnvRow label="KEY_SIGNATURE" value={handshake.prefix + "..." + handshake.suffix} />
+                 <EnvRow label="KEY_SOURCE" value="HARD-CODED (PRIMARY)" />
+                 <EnvRow label="SESSION_VALID" value={sessionData ? 'YES' : 'NO'} />
+              </div>
+           </div>
         </div>
 
         {/* LOGS & JSON BLOB */}

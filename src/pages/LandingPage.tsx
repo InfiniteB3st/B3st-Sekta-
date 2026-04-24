@@ -30,15 +30,33 @@ export default function LandingPage() {
             const anime = await jikanService.getAnimeById(history.anime_id);
             setHeroAnime(anime);
             setIsNewUser(false);
+            
+            // Update Favicon to last watched anime or high quality fallback
+            const favicon = document.querySelector('link[rel="icon"]');
+            if (favicon) {
+              (favicon as any).href = anime.images.webp.large_image_url;
+            }
           } else {
             // Default high-quality fallback: Solo Leveling or similar trending
             const anime = await jikanService.getAnimeById(52299); 
             setHeroAnime(anime);
+            
+            const favicon = document.querySelector('link[rel="icon"]');
+            if (favicon) {
+              (favicon as any).href = anime.images.webp.large_image_url;
+            }
           }
         } else {
-          // Public Default
-          const anime = await jikanService.getAnimeById(52299);
+          // Public Default: Random High Quality Anime
+          const randomIds = [52299, 5114, 11061, 38524]; // Solo Leveling, FMAB, Hunter x Hunter, Attack on Titan
+          const randomId = randomIds[Math.floor(Math.random() * randomIds.length)];
+          const anime = await jikanService.getAnimeById(randomId);
           setHeroAnime(anime);
+
+          const favicon = document.querySelector('link[rel="icon"]');
+          if (favicon) {
+            (favicon as any).href = anime.images.webp.large_image_url;
+          }
         }
       } catch (err) {
         console.error('Landing Discovery Failure:', err);
@@ -73,9 +91,9 @@ export default function LandingPage() {
 
       {/* Header Deck */}
       <header className="relative z-50 w-full max-w-[1600px] mx-auto px-10 flex flex-col items-center gap-16 py-12">
-        <Link to="/home" className="logo-text text-6xl md:text-8xl hover:scale-105 transition-transform">
-          <span className="logo-part-b3st">B3ST</span>
-          <span className="logo-part-sekta">SEKTA</span>
+        <Link to="/home" className="logo-text text-6xl md:text-8xl hover:scale-105 transition-transform flex items-center justify-center gap-4">
+          <span className="font-black italic text-white uppercase tracking-tighter">B3st</span>
+          <span className="font-black italic text-primary uppercase tracking-tighter">Sekta</span>
         </Link>
 
         {/* Centered Search Engine */}
