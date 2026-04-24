@@ -39,27 +39,43 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
   render() {
     if (this.state.hasError) {
+      const isAuthError = this.state.error?.message?.includes('supabase') || this.state.error?.message?.includes('auth');
+      
       return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-12 text-center space-y-8">
           <div className="w-32 h-32 bg-red-500/10 rounded-full flex items-center justify-center border-4 border-red-500/20 animate-pulse">
             <AlertTriangle size={64} className="text-red-500" />
           </div>
           <div className="space-y-4">
-            <h1 className="text-5xl font-black italic text-white uppercase tracking-tighter">System <span className="text-red-500">Fractured</span></h1>
+            <h1 className="text-5xl font-black italic text-white uppercase tracking-tighter">
+              System <span className="text-red-500">{isAuthError ? 'Handshake Fail' : 'Fractured'}</span>
+            </h1>
             <p className="text-gray-500 font-bold uppercase tracking-widest text-[11px] max-w-md mx-auto">
-              The B3st Sekta kernel encountered a memory isolation failure or routing leak.
+              {isAuthError 
+                ? "RECOVERY MODE: The B3st Sekta kernel failed to verify the Supabase identity token."
+                : "The B3st Sekta kernel encountered a memory isolation failure or routing leak."}
             </p>
             <div className="bg-white/5 p-4 rounded-xl border border-white/5 font-mono text-[9px] text-red-400 overflow-auto max-w-2xl">
               ERROR_CODE: {String(this.state.error?.message || "KERNEL_PANIC")}
             </div>
           </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-primary text-black px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center gap-4 hover:scale-105 active:scale-95 transition-all"
-          >
-            <RefreshCw size={20} />
-            Reboot Interface
-          </button>
+          <div className="flex gap-4">
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-primary text-black px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center gap-4 hover:scale-105 active:scale-95 transition-all"
+            >
+              <RefreshCw size={20} />
+              Reboot Interface
+            </button>
+            {isAuthError && (
+              <button 
+                onClick={() => { localStorage.clear(); window.location.href='/login'; }}
+                className="bg-white/10 text-white px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm border border-white/10 hover:bg-white/20 transition-all"
+              >
+                Flush Identity Cache
+              </button>
+            )}
+          </div>
         </div>
       );
     }

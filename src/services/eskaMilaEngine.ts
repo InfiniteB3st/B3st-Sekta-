@@ -9,14 +9,16 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
     const addons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
     const history = JSON.parse(localStorage.getItem('sekta_history') || '[]');
     const errors = (window as any)._sekta_errors || [];
+    const supabaseToken = localStorage.getItem('supabase.auth.token');
 
     const enrichedState = {
       ...diagnosticData,
-      auth: session.data.session ? `ACTIVE_SESSION_${session.data.session.user.id}` : 'UNAUTHORIZED_HANDSHAKE_LOCKED',
+      auth_state: session.data.session ? `ACTIVE_SESSION_${session.data.session.user.id}` : 'UNAUTHORIZED_HANDSHAKE_LOCKED',
+      token_presence: supabaseToken ? 'TOKEN_DETECTED_IN_STORAGE' : 'NO_IDENTITY_TOKEN',
       local_addons_count: addons.length,
       history_nodes: history.length,
-      recent_system_errors: errors.slice(-5),
-      browser: navigator.userAgent,
+      recent_system_errors: errors.slice(-10),
+      browser_fingerprint: navigator.userAgent,
       timestamp: new Date().toISOString()
     };
 
@@ -38,12 +40,12 @@ export const getEskaMilaResponse = async (userPrompt: string, diagnosticData: an
         YOUR CORE DIRECTIVES:
         1. Resolve "White-Screen" or routing failures by analyzing snapshotted metadata.
         2. Validate Stremio-grade add-on manifests (stremio:// vs https://).
-        3. Audit Supabase handshakes (401 errors usually indicate a missing SB_KEY signature).
+        3. Audit Supabase handshakes. If "token_presence" is TOKEN_DETECTED_IN_STORAGE but auth_state is UNAUTHORIZED, report a "Token Desync Conflict".
         4. Assist with Discovery Engine queries based on current user session metadata.
         
         PERSONALITY:
         Precise, efficient, and technically supreme. You speak like a senior architect.
-        NO mention of external AI brands. You are Eska Mila.
+        Strictly use "Eska Mila" branding. Never refer to external AI models or parent companies.
         If a user reports a failure, cross-reference with the INTERNAL SYSTEM STATE instantly.`
       }
     });
