@@ -134,8 +134,9 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
               </h3>
               <div className="space-y-4">
                  <EnvRow label="DETECTION_SOURCE" value={envSource} />
-                 <EnvRow label="VITE_SUPABASE_URL_STATE" value={supabaseUrlState} />
-                 <EnvRow label="NODE_ENV" value={import.meta.env.MODE} />
+                 <EnvRow label="ENVIRONMENT_PROBE" value={typeof process !== 'undefined' ? (process as any)?.env?.NODE_ENV : 'VITE_MODE_ONLY'} />
+                 <EnvRow label="VITE_MODE" value={import.meta.env.MODE} />
+                 <EnvRow label="BUILD_TIMESTAMP" value="2026-04-24T00:27:15Z" />
               </div>
            </div>
 
