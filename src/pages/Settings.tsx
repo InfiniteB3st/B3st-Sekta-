@@ -18,17 +18,21 @@ export default function Settings() {
   const handleUpdateAccent = async (color: string) => {
     setAccent(color);
     document.documentElement.style.setProperty('--primary', color);
+    localStorage.setItem('sekta_accent', color);
     
-    const { error } = await supabase
-      .from('profiles')
-      .update({ accent_color: color })
-      .eq('id', user?.id);
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ accent_color: color })
+        .eq('id', user.id);
 
-    if (!error) {
-       await refreshProfile();
-       setStatus({ type: 'success', text: 'Accent Color Synced' });
-       setTimeout(() => setStatus(null), 3000);
+      if (!error) {
+         await refreshProfile();
+      }
     }
+    
+    setStatus({ type: 'success', text: 'Accent Color Applied Locally' + (user ? ' & Synced' : '') });
+    setTimeout(() => setStatus(null), 3000);
   };
 
   const handleMalImport = async () => {

@@ -20,11 +20,11 @@ const getEnv = (key: string) => {
 };
 
 // CRITICAL: Hard-coded Primary Sources for rock-solid deployment stability.
-// DO NOT MODIFY THESE UNLESS THE PROJECT ENDPOINT CHANGES.
+// DIRECTOR: Replace this SB_KEY with the EXACT key from Supabase > Settings > API > anon
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
-const SB_KEY = getEnv('SUPABASE_ANON_KEY') || getEnv('VITE_SUPABASE_ANON_KEY') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
-// MASTER CLIENT PROVISIONING (Template Required)
+// MASTER CLIENT PROVISIONING
 export const supabase = createClient(SB_URL, SB_KEY, {
   global: { headers: { 'apikey': SB_KEY } },
   auth: {
@@ -34,6 +34,37 @@ export const supabase = createClient(SB_URL, SB_KEY, {
     flowType: 'pkce'
   }
 });
+
+// WATCH HISTORY PROTOCOL (INCOGNITO COMPLIANT)
+export const syncWatchHistory = async (history: any) => {
+  const { user_id, anime_id, episode_id } = history;
+  
+  if (!user_id) {
+    // INCOGNITO MODE: Store in localStorage
+    const localHistory = JSON.parse(localStorage.getItem('sekta_history') || '[]');
+    const existingIndex = localHistory.findIndex((h: any) => h.anime_id === anime_id);
+    
+    const newEntry = { ...history, updated_at: new Date().toISOString() };
+    if (existingIndex > -1) {
+      localHistory[existingIndex] = newEntry;
+    } else {
+      localHistory.unshift(newEntry);
+    }
+    
+    localStorage.setItem('sekta_history', JSON.stringify(localHistory.slice(0, 50)));
+    return;
+  }
+
+  // LOGGED IN: Sync to Supabase
+  const { error } = await supabase
+    .from('watch_history')
+    .upsert({
+      ...history,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,anime_id' });
+
+  if (error) console.error('Cloud Sync Failed:', error);
+};
 
 // Detection for Diagnostic Overlay
 export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Primary Source";
@@ -111,22 +142,9 @@ export const syncUserProfile = async (user: any) => {
   return profile;
 };
 
-/**
- * Account Provisioning Profile Helper
- */
 export const syncProfile = async (payload: any) => {
   const { error } = await (supabase as any)
     .from('profiles')
     .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: 'id' });
   if (error) console.error('Profile Sync Failure:', error);
-};
-
-/**
- * DATA CONSOLIDATION: Master Upsert Logic
- */
-export const syncWatchHistory = async (payload: any) => {
-  const { error } = await (supabase as any)
-    .from('watch_history')
-    .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: 'user_id,anime_id' });
-  if (error) console.error('Sync failure:', error);
 };

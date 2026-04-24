@@ -27,14 +27,16 @@ export default function Home() {
         setMostPopular(popular);
 
         if (user) {
-          const { data } = await supabase
-            .from('watch_data')
+          const { data } = await (supabase as any)
+            .from('watch_history')
             .select('*')
             .eq('user_id', user.id)
-            .eq('status', 'Watching')
             .order('updated_at', { ascending: false })
-            .limit(10);
+            .limit(12);
           if (data) setContinueWatching(data);
+        } else {
+          const localData = JSON.parse(localStorage.getItem('sekta_history') || '[]');
+          setContinueWatching(localData.slice(0, 12));
         }
       } catch (err) {
         console.error('Home Feed Engine Fail:', err);

@@ -58,7 +58,12 @@ export default function App() {
       .bg-primary { background-color: #ffb100 !important; }
       .border-primary { border-color: #ffb100 !important; }
       .text-primary { color: #ffb100 !important; }
-      :root { --primary-color: #ffb100; }
+      :root { 
+        --primary: #ffb100;
+        --primary-rgb: 255, 177, 0;
+      }
+      .accent-yellow { color: #ffb100; }
+      .bg-yellow { background-color: #ffb100; }
     `;
     document.head.appendChild(style);
     document.title = "B3st Sekta";

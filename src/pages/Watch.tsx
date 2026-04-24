@@ -45,13 +45,13 @@ export default function Watch() {
 
   return (
     <div className="min-h-screen bg-black pb-40 animate-in fade-in duration-500">
-      {anime && user && (
+      {anime && (
         <VideoPlayer 
           animeId={anime.mal_id}
           animeTitle={anime.title}
           imageUrl={anime.images.webp.large_image_url}
-          currentEpisode={Number(ep)}
-          userId={user.id}
+          episode={Number(ep)}
+          userId={user?.id || null}
           onEpisodeChange={handleEpisodeChange}
           onBack={() => navigate(`/anime/${id}`)}
         />

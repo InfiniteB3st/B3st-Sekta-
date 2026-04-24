@@ -43,6 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Apply local accent if guest
+    const localAccent = localStorage.getItem('sekta_accent');
+    if (localAccent) {
+      document.documentElement.style.setProperty('--primary', localAccent);
+    }
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);

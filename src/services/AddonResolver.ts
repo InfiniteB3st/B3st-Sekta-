@@ -13,9 +13,30 @@ export interface AddonSource {
  */
 export const AddonResolver = {
   /**
-   * Fetches the user's enabled addons from Supabase.
+   * Fetches the user's enabled addons from Supabase or LocalStorage for guests.
    */
   getEnabledAddons: async (userId: string): Promise<AddonSource[]> => {
+    // Mapping IDs to human-readable metadata
+    const ADDON_MAP: Record<string, { name: string; description: string }> = {
+      'netflix-node': { name: 'Netflix Node', description: 'Ultra-HD Premium Stream' },
+      'hianime-core': { name: 'HiAnime Core', description: 'Stable 1080p Mirror' },
+      'aniwave-bridge': { name: 'AniWave Bridge', description: 'Global CDN Network' },
+      'mal-sync': { name: 'MAL Sync Pro', description: 'Metadata Sync Only' }
+    };
+
+    if (userId === 'guest') {
+      const localAddons = JSON.parse(localStorage.getItem('sekta_addons') || '[]');
+      if (localAddons.length === 0) {
+        // Default set for new guests
+        return [{ id: 'hianime-core', name: 'HiAnime Core', description: 'Stable 1080p Mirror', enabled: true }];
+      }
+      return localAddons.map((item: any) => ({
+        ...item,
+        name: ADDON_MAP[item.addon_id]?.name || item.addon_id,
+        description: ADDON_MAP[item.addon_id]?.description || 'Custom Extension Source'
+      }));
+    }
+
     const { data, error } = await supabase
       .from('user_addons')
       .select('addon_id, enabled')
@@ -26,14 +47,6 @@ export const AddonResolver = {
       console.error('Addon Resolution Failed:', error);
       return [];
     }
-
-    // Mapping IDs to human-readable metadata
-    const ADDON_MAP: Record<string, { name: string; description: string }> = {
-      'netflix-node': { name: 'Netflix Node', description: 'Ultra-HD Premium Stream' },
-      'hianime-core': { name: 'HiAnime Core', description: 'Stable 1080p Mirror' },
-      'aniwave-bridge': { name: 'AniWave Bridge', description: 'Global CDN Network' },
-      'mal-sync': { name: 'MAL Sync Pro', description: 'Metadata Sync Only' }
-    };
 
     return (data || []).map(item => ({
       id: item.addon_id,
