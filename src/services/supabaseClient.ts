@@ -6,35 +6,21 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let _supabase: any = null;
 
 /**
- * SAFE-BOOT HANDSHAKE PROTOCOL
- * Prevents "API Key must be set" race conditions on entry.
+ * initSupabase: The isolated handshake protocol.
+ * Returns the client only when explicitly called, preventing boot-time crashes.
  */
-export const getSupabase = () => {
+export const initSupabase = () => {
+  if (typeof window === 'undefined') return null;
+  
   if (!_supabase) {
     try {
       if (!SB_KEY || SB_KEY.includes('REPLACE')) {
-        console.error("KERNEL CRITICAL: API KEY NOT FOUND.");
         (window as any).HANDSHAKE_ERROR = true;
         return null;
       }
-      _supabase = createClient(SB_URL, SB_KEY, {
-        global: { 
-          headers: { 
-            'apikey': SB_KEY,
-            'Authorization': `Bearer ${SB_KEY}`
-          } 
-        },
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          flowType: 'pkce'
-        }
-      });
-      console.log("Kernel: Handshake established with signature", SB_KEY.slice(0, 5));
+      _supabase = createClient(SB_URL, SB_KEY);
       (window as any).HANDSHAKE_ERROR = false;
     } catch (err) {
-      console.error("KERNEL HANDSHAKE FRACTURED:", err);
       (window as any).HANDSHAKE_ERROR = true;
       return null;
     }
@@ -42,22 +28,29 @@ export const getSupabase = () => {
   return _supabase;
 };
 
-// PROXY EXPORT: Maintain compatibility while supporting Lazy Init
+// Legacy support for internal calls - but initSupabase is the preferred node
+export const getSupabase = initSupabase;
+
+/**
+ * SAPABSE PROXY NODES (STABILITY LAYER)
+ * Safely redirects calls to initialized client.
+ */
 export const supabase = new Proxy({} as any, {
   get: (target, prop) => {
-    const client = getSupabase();
+    const client = initSupabase();
     if (!client) {
-      // Return a safe dummy object to prevent top-level crashes
+      // Emergency Mock nodes to prevent crashing
       if (prop === 'auth') return { 
-        getSession: async () => ({ data: { session: null }, error: null }),
+        getSession: async () => ({ data: { session: null } }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        signInWithOAuth: async () => ({ error: { message: 'Database Offline' } }),
         signOut: async () => {} 
       };
       if (prop === 'from') return () => ({ 
-        select: () => ({ order: () => ({ limit: () => ({ single: () => ({ data: null, error: null }), maybeSingle: () => ({ data: null, error: null }) }) }), limit: () => ({ single: () => ({ data: null, error: null }) }) }),
-        upsert: async () => ({ error: { message: 'Database Offline' } }),
-        update: () => ({ eq: () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }) })
+        select: () => ({ order: () => ({ limit: () => ({ single: async () => ({ data: null }), maybeSingle: async () => ({ data: null }) }) }), limit: () => ({ single: async () => ({ data: null }), maybeSingle: async () => ({ data: null }) }) }),
+        upsert: async () => ({ error: null }),
+        insert: async () => ({ error: null }),
+        update: () => ({ eq: () => ({ select: () => ({ single: async () => ({ data: null }) }) }) }),
+        delete: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) })
       });
       return null;
     }

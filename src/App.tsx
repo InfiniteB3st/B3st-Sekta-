@@ -1,7 +1,7 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Database } from 'lucide-react';
-import { supabase } from './services/supabaseClient';
+import { initSupabase } from './services/supabaseClient';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
@@ -51,42 +51,37 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   render() {
     if (this.state.hasError || (window as any).HANDSHAKE_ERROR) {
-      const isAuthError = this.state.error?.message?.includes('supabase') || this.state.error?.message?.includes('auth') || (window as any).HANDSHAKE_ERROR;
-      
       return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-12 text-center space-y-8">
-          <div className="w-32 h-32 bg-red-500/10 rounded-full flex items-center justify-center border-4 border-red-500/20 animate-pulse">
-            <AlertTriangle size={64} className="text-red-500" />
-          </div>
-          <div className="space-y-4">
-            <h1 className="text-5xl font-black italic text-white uppercase tracking-tighter">
-              System <span className="text-red-500">{isAuthError ? 'Handshake Fail' : 'Fractured'}</span>
-            </h1>
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-[11px] max-w-md mx-auto">
-              {isAuthError 
-                ? "RECOVERY MODE: The B3st Sekta kernel failed to verify the database signature. Press SHIFT for emergency logs."
-                : "The B3st Sekta kernel encountered a memory isolation failure or routing leak."}
-            </p>
-            <div className="bg-white/5 p-4 rounded-xl border border-white/5 font-mono text-[9px] text-red-400 overflow-auto max-w-2xl">
-              ERROR_CODE: {(window as any).HANDSHAKE_ERROR ? "HANDSHAKE_401_INVALID_KEY" : String(this.state.error?.message || "KERNEL_PANIC")}
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-12 text-center space-y-12 animate-in fade-in duration-1000">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse" />
+            <div className="w-32 h-32 bg-white/5 border-2 border-primary/20 rounded-[2.5rem] flex items-center justify-center text-primary relative shadow-[0_0_50px_rgba(255,177,0,0.1)]">
+               <ServerCrash size={64} className="animate-bounce" />
             </div>
           </div>
-          <div className="flex gap-4">
+
+          <div className="space-y-6">
+            <div className="flex items-center justify-center gap-3">
+               <span className="text-4xl font-black italic text-white uppercase tracking-tighter">B3st</span>
+               <span className="text-4xl font-black italic text-primary uppercase tracking-tighter">Sekta</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-400 uppercase tracking-[0.2em]">Recovery Console Active</h2>
+            <p className="text-gray-600 max-w-sm mx-auto text-[11px] font-medium leading-relaxed uppercase tracking-wider">
+               The kernel has intercepted a critical memory failure. Handshake state: {(window as any).HANDSHAKE_ERROR ? "FRACTURED" : "STABLE"}.
+               Press <span className="text-primary font-black">SHIFT + Q + T</span> to access the master bypass.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
             <button 
               onClick={() => window.location.reload()}
-              className="bg-primary text-black px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center gap-4 hover:scale-105 active:scale-95 transition-all"
+              className="px-12 py-5 bg-primary text-black font-black uppercase tracking-widest text-[11px] rounded-full hover:scale-110 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,177,0,0.2)] flex items-center gap-3"
             >
-              <RefreshCw size={20} />
-              Reboot Interface
+              <RefreshCw size={16} /> Re-Initialize Kernel
             </button>
-            {isAuthError && (
-              <button 
-                onClick={() => { localStorage.clear(); window.location.href='/login'; }}
-                className="bg-white/10 text-white px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm border border-white/10 hover:bg-white/20 transition-all"
-              >
-                Flush Identity Cache
-              </button>
-            )}
+            <div className="p-6 bg-white/5 border border-white/5 rounded-2xl font-mono text-[9px] text-red-500/60 max-w-lg overflow-hidden whitespace-nowrap text-ellipsis">
+               EXCEPTION_TOKEN: {this.state.error?.message || "HANDSHAKE_TIMEOUT_401"}
+            </div>
           </div>
         </div>
       );
@@ -134,25 +129,15 @@ function AppContent() {
     console.log("Kernel: Pre-flight sequence initiated...");
     
     // MASTER KEY SHORTCUT: Shift + Q + T
+    const keys: Record<string, boolean> = {};
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.shiftKey && e.key.toUpperCase() === 'Q' && (window as any)._q_pressed === undefined) {
-        (window as any)._q_pressed = true;
-      }
-      
-      const isShiftQT = e.shiftKey && 
-                        (e.key.toUpperCase() === 'T') && 
-                        (window as any)._q_pressed;
-
-      if (isShiftQT) {
-        console.log("Kernel: Master Key Accepted. Diagnosis Interface Overridden.");
+      keys[e.key.toUpperCase()] = true;
+      if (e.shiftKey && keys['Q'] && keys['T']) {
         setShowDiagnostics(prev => !prev);
       }
     };
-
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key.toUpperCase() === 'Q') {
-        (window as any)._q_pressed = false;
-      }
+      keys[e.key.toUpperCase()] = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -195,6 +180,11 @@ function AppContent() {
 
     // AUTH OBSERVER & DB PROBE
     const checkDb = async () => {
+      const supabase = initSupabase();
+      if (!supabase) {
+        setIsDbOffline(true);
+        return;
+      }
       try {
         const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
         if (error && error.code === '401') setIsDbOffline(true);
@@ -209,23 +199,35 @@ function AppContent() {
     checkDb();
 
     // Listen for Auth Changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-       console.log(`AUTH_EVENT: ${event}`, session?.user?.id);
-       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
-         checkDb();
-       }
-       if (event === 'SIGNED_OUT') {
-         window.location.href = '/login';
-       }
-    });
+    const supabaseClient = initSupabase();
+    let subscription: { unsubscribe: () => void } | null = null;
+    
+    if (supabaseClient) {
+      const { data } = supabaseClient.auth.onAuthStateChange((event, session) => {
+         console.log(`AUTH_EVENT: ${event}`, session?.user?.id);
+         if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+           checkDb();
+         }
+         if (event === 'SIGNED_OUT') {
+           window.location.href = '/login';
+         }
+      });
+      subscription = data.subscription;
+    }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription?.unsubscribe();
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
   useEffect(() => {
     // DYNAMIC FAVICON LOGIC
     const updateFavicon = async () => {
        try {
+          const supabase = initSupabase();
+          if (!supabase) return;
           const { data } = await supabase.from('watch_history').select('anime_id').order('watched_at', { ascending: false }).limit(1).single();
           let animeId = data?.anime_id;
           

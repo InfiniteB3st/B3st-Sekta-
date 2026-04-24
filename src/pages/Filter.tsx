@@ -96,10 +96,10 @@ export default function Filter() {
         <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-12 gap-8">
           <div className="space-y-4">
              <h1 className="text-6xl md:text-8xl font-black italic text-white uppercase tracking-tighter leading-none">
-               System <span className="text-primary italic">Filter</span>
+               Archive <span className="text-primary italic">Filter</span>
              </h1>
              <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.4em] italic">
-               Found {results.length} results matching parameters // Kernel Access: Active
+               Found {results.length} nodes matching parameters // Kernel Access: Active
              </p>
           </div>
           <button 
