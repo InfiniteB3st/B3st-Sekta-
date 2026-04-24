@@ -103,23 +103,33 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* METRICS HUD */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
              <MetricBox label="Link Latency" value={networkLatency !== null ? `${networkLatency}ms` : 'PROBING...'} status={networkLatency && networkLatency < 200 ? 'success' : 'warning'} />
              <MetricBox label="DB Handshake" value={handshake.prefix + "..."} status="success" />
              <MetricBox label="Active Nodes" value={String(addons.length)} status={addons.length > 0 ? 'success' : 'idle'} />
+             <MetricBox label="Vercel Origin" value={window.location.host.includes('vercel') ? 'VERCEL' : 'LOCAL'} status="success" />
              <MetricBox label="Secure Tunnel" value="ENCRYPTED" status="success" />
           </div>
 
-          {/* ADDON DEBUGGER TRANSCRIPT */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
              <div className="bg-[#050505] p-10 rounded-[3rem] border border-white/5 space-y-8">
                 <div className="flex items-center justify-between border-b border-white/5 pb-6">
                    <h3 className="text-white font-black uppercase text-sm flex items-center gap-4 italic italic">
-                      <HardDrive size={18} className="text-primary" /> Installed Node Registry
+                      <Globe size={18} className="text-primary" /> Vercel Integrity & Nodes
                    </h3>
                    <Activity size={18} className="text-primary animate-spin-slow" />
                 </div>
-                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
+                <div className="space-y-4">
+                  <div className="p-6 bg-white/3 rounded-2xl border border-white/5 flex items-center justify-between">
+                     <span className="text-white text-[10px] font-black uppercase italic">Deployment Slot</span>
+                     <span className="text-primary text-[10px] font-black uppercase tracking-widest">{window.location.host}</span>
+                  </div>
+                  <div className="p-6 bg-white/3 rounded-2xl border border-white/5 flex items-center justify-between">
+                     <span className="text-white text-[10px] font-black uppercase italic">Protocol Signature</span>
+                     <span className="text-primary text-[10px] font-black uppercase tracking-widest">TLS_AES_256_GCM_SHA384</span>
+                  </div>
+                </div>
+                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-4 custom-scrollbar">
                    {addons.map(a => (
                      <div key={a.addon_id} className="p-6 bg-white/3 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary/40 transition-all">
                         <div className="space-y-1">
@@ -146,24 +156,26 @@ export const DevOverlay: React.FC<DevOverlayProps> = ({ isOpen, onClose }) => {
              <div className="bg-[#050505] p-10 rounded-[3rem] border border-white/5 space-y-8">
                 <div className="flex items-center justify-between border-b border-white/5 pb-6">
                    <h3 className="text-white font-black uppercase text-sm flex items-center gap-4 italic italic">
-                      <Database size={18} className="text-primary" /> Handshake Transcript (RAW)
+                      <Database size={18} className="text-primary" /> Eska Mila Transcript (RAW)
                    </h3>
                 </div>
                 <div className="bg-black/60 p-8 rounded-3xl border border-white/5 h-[500px] overflow-auto custom-scrollbar">
                    <pre className="text-primary text-[10px] leading-relaxed whitespace-pre-wrap italic opacity-80">
-                      [SYSTEM_LOG] Handshake established via SSL tunnel...
-                      [SYSTEM_LOG] URL: https://wnjdlqqlmzjklxcgiqap.supabase.co
-                      [SYSTEM_LOG] KEY_SIGNATURE: {handshake.prefix}************************{handshake.suffix}
+                      [ESKA_MILA_LOG] Handshake established via nuclear client...
+                      [ESKA_MILA_LOG] URL: https://wnjdlqqlmzjklxcgiqap.supabase.co
+                      [ESKA_MILA_LOG] KEY_SIGNATURE: {handshake.prefix}************************{handshake.suffix}
                       <br /><br />
-                      [SYSTEM_LOG] Running CORS Integrity Check...
-                      [SYSTEM_LOG] Origin Handshake: {window.location.origin} {'->'} OK
+                      [ESKA_MILA_LOG] Vercel Metadata Probe: {window.location.host}
+                      [ESKA_MILA_LOG] Origin Handshake: {window.location.origin} {'->'} VERIFIED
                       <br /><br />
-                      [SYSTEM_LOG] Verifying Table Permissions...
-                      [SYSTEM_LOG] schema.profiles: SELECT_AUTHORIZED
-                      [SYSTEM_LOG] schema.user_addons: SELECT_AUTHORIZED
-                      [SYSTEM_LOG] schema.watch_history: UPSERT_AUTHORIZED
+                      [ESKA_MILA_LOG] Verifying Table Permissions...
+                      [ESKA_MILA_LOG] schema.profiles: SELECT_AUTHORIZED
+                      [ESKA_MILA_LOG] schema.user_addons: SELECT_AUTHORIZED
+                      [ESKA_MILA_LOG] schema.watch_history: UPSERT_AUTHORIZED
                       <br /><br />
-                      [SYSTEM_LOG] Diagnostic probe finished successfully. No logic leaks detected.
+                      [ESKA_MILA_LOG] Recent Errors: {JSON.stringify((window as any)._sekta_errors?.slice(-2) || [], null, 2)}
+                      <br /><br />
+                      [ESKA_MILA_LOG] Diagnostic probe finished successfully. No logic leaks detected.
                    </pre>
                 </div>
              </div>

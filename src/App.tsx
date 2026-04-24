@@ -230,12 +230,23 @@ function AppContent() {
             The database node has rejected the handshake. Please check your Supabase API credentials in services/supabaseClient.ts.
           </p>
         </div>
-        <button 
-          onClick={() => window.location.reload()}
-          className="bg-primary text-black px-12 py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl hover:scale-105 active:scale-95 transition-all"
-        >
-          ATTEMPT RE-SYNCHRONIZATION
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-primary text-black px-12 py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl hover:scale-105 active:scale-95 transition-all"
+          >
+            ATTEMPT RE-SYNCHRONIZATION
+          </button>
+          <button 
+            onClick={() => setShowDiagnostics(true)}
+            className="bg-white/5 text-white/40 px-8 py-5 rounded-[2rem] font-black uppercase tracking-widest text-[10px] border border-white/10 hover:text-white transition-all"
+          >
+            OPEN KERNEL LOGS
+          </button>
+        </div>
+        <Suspense fallback={null}>
+          <DiagnosticWrapper isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
+        </Suspense>
       </div>
     );
   }

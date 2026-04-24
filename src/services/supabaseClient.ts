@@ -1,52 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 
-/**
- * SENIOR FULL-STACK ARCHITECT: Hardened Supabase Singleton
- * Explicitly engineered to prevent OAuth Channel Blockage and "No API Key" Race Conditions.
- */
-
-const getEnv = (key: string) => {
-  // Multi-Prefix check: VITE_, REACT_APP_, or direct
-  const val = (
-    (typeof process !== 'undefined' ? (process as any)?.env?.[key] : '') ||
-    (typeof process !== 'undefined' ? (process as any)?.env?.[`VITE_${key}`] : '') ||
-    (typeof process !== 'undefined' ? (process as any)?.env?.[`REACT_APP_${key}`] : '') ||
-    import.meta.env[key] || 
-    import.meta.env[`VITE_${key}`] || 
-    import.meta.env[`REACT_APP_${key}`] || 
-    ''
-  );
-  return val;
-};
-
-// CRITICAL: Supabase Cluster Configuration
-// WARNING: The SB_KEY below appears to be a PLACEHOLDER or is incomplete.
-// Max, you MUST replace this with your actual 'anon public' key from the Supabase Dashboard.
 const SB_URL = "https://wnjdlqqlmzjklxcgiqap.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3";
 
-console.log("Kernel: Handshake initialized with signature", SB_KEY.slice(0, 5));
+if (!SB_KEY || SB_KEY.includes('REPLACE')) {
+  console.error("KERNEL CRITICAL: Supabase API Key is invalid or missing. System entering Limited Mode.");
+} else {
+  console.log("Kernel: Handshake initialized with signature", SB_KEY.slice(0, 5));
+}
 
-// MASTER CLIENT PROVISIONING
-// NUCLEAR HANDSHAKE: Direct string injection to bypass Vercel environment resolution latency
-export const supabase = createClient(
-  "https://wnjdlqqlmzjklxcgiqap.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3",
-  {
-    global: { 
-      headers: { 
-        'apikey': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3",
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduamRscXFsbXpqa2x4Y2dpcWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTMyMDUzOTYsImV4cCI6MjAyODc4MTM5Nn0.8m9PzC7u3vR_FqM19nB6_B5L7vP9u_B8_B1_B2_B3`
-      } 
-    },
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce'
-    }
+// MASTER CLIENT PROVISIONING: NUCLEAR HANDSHAKE
+// Direct string injection to bypass Vercel environment resolution latency
+export const supabase = createClient(SB_URL, SB_KEY, {
+  global: { 
+    headers: { 
+      'apikey': SB_KEY,
+      'Authorization': `Bearer ${SB_KEY}`
+    } 
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   }
-);
+});
 
 // WATCH HISTORY PROTOCOL (INCOGNITO COMPLIANT)
 export const syncWatchHistory = async (history: any) => {
@@ -68,7 +46,7 @@ export const syncWatchHistory = async (history: any) => {
   if (error) console.error('Cloud Sync Failed:', error);
 };
 
-export const envSource = (getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL')) ? "Vercel/Vite Cloud Environment" : "Hard-coded Primary Source";
+export const envSource = "Hard-coded Primary Source";
 
 export const getKeyHandshake = () => ({
   prefix: SB_KEY.substring(0, 5),
